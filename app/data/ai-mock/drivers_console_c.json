@@ -1,0 +1,27 @@
+{
+  "filePath": "drivers/console.c",
+  "summary": "控制台显示驱动：字符输出、滚动、光标控制以及转义序列处理。",
+  "plainExplanation": "con_write() 是屏幕的主输出路径。它将字符写入当前光标位置的显存中，处理特殊控制字符（换行、回车、退格、制表、响铃），并在到达屏幕底部时管理向上滚动。转义序列解析支持光标定位（ANSI 序列如 ESC[2J 清屏、ESC[y;xH 移动光标）。con_init() 在引导时检测显示适配器类型，设置正确的显存地址和屏幕尺寸。",
+  "keyFunctions": [
+    {"name": "con_write", "role": "将字符串写入控制台显示，处理控制字符和滚动"},
+    {"name": "con_init", "role": "检测显示适配器（MDA/CGA/EGA/VGA），设置显存基址和屏幕几何参数"},
+    {"name": "scrup", "role": "将控制台向上滚动一行，移动显存并清除新的底行"},
+    {"name": "gotoxy", "role": "更新 VGA 光标位置寄存器，将硬件光标移动到 (x, y)"},
+    {"name": "csi_J", "role": "处理 ANSI ED（擦除显示）转义：从光标到末尾或整个屏幕"},
+    {"name": "csi_m", "role": "处理 ANSI SGR（选择图形再现）：设置文本属性如粗体、反显、颜色"},
+    {"name": "set_origin", "role": "设置滚动区域的左上角（less 等程序使用）"}
+  ],
+  "prerequisites": ["VGA 文本模式显存布局（0xB8000）", "ANSI 转义序列解析", "字符属性（闪烁、粗体、下划线）", "硬件光标控制寄存器"],
+  "relatedFiles": [
+    {"path": "drivers/tty_io.c", "reason": "tty_write 调用 con_write 在屏幕上显示字符"},
+    {"path": "include/linux/tty.h", "reason": "定义 struct tty_struct 和终端控制结构体"},
+    {"path": "init/main.c", "reason": "main 在引导时调用 con_init 设置显示"},
+    {"path": "drivers/keyboard.S", "reason": "键盘输入流：扫描码 → keyboard.S → do_tty_interrupt → con_write 回显"}
+  ],
+  "mermaid": "graph TD\n    A[con_write tty] --> B[从写入缓冲区获取下一个字符]\n    B --> C{字符类型？}\n    C -->|可打印字符| D[写入光标处的显存]\n    D --> E[光标 x 前进]\n    E --> F{x >= 列数？}\n    F -->|是| G[设 x=0，y++]\n    G --> H{y >= 行数？}\n    H -->|是| I[scrup - 向上滚动一行]\n    H -->|否| J[继续]\n    F -->|否| J\n    J --> P[gotoxy - 更新硬件光标]\n    C -->|\\n LF| K[y++；若需滚动则处理]\n    K --> P\n    C -->|\\r CR| L[设 x=0]\n    L --> P\n    C -->|\\b BS| M[若 x>0 则 x--]\n    M --> P\n    C -->|\\t TAB| N[前进到下一个 8 字符制表位]\n    N --> F\n    C -->|\\a BEL| O[通过扬声器响铃]\n    O --> J\n    C -->|ESC| Q[解析转义序列]\n    Q --> R{序列类型？}\n    R -->|CSI m| S[csi_m - 设置文本属性]\n    R -->|CSI J| T[csi_J - 擦除显示]\n    R -->|CSI H| U[gotoxy - 移动光标]\n    S --> P\n    T --> P\n    U --> P",
+  "faq": [
+    {"q": "控制台滚动如何工作？", "a": "scrup() 在显存中将第 1..(ROWS-1) 行复制到第 0..(ROWS-2) 行（使用 rep movsw 加速），然后用空格清除底行。原点（上边距）可通过 ESC[;r 设置为底部固定的状态栏——滚动仅发生在原点与 ROWS-1 之间。"},
+    {"q": "MDA 和 VGA 控制台初始化有何区别？", "a": "con_init() 检查 0x410 处的 BIOS 设备字。如果显示类型为单色（MDA），显存位于 0xB0000，使用 80x25 文本模式。对于 CGA/EGA/VGA，显存位于 0xB8000，支持彩色。VGA 还通过重新编程 CRTC 寄存器支持 80x50 和 80x43 模式。"},
+    {"q": "为什么控制台在内核中处理 ANSI 转义序列？", "a": "早期 Linux 没有用户态终端仿真——内核控制台就是终端。ANSI 序列如 ESC[2J（清屏）和 ESC[1m（粗体）在内核中解析，以避免为每次显示更新切换到用户态。现代 Linux 仍为虚拟控制台这样做，尽管 xterm/gnome-terminal 在 GUI 环境的用户态处理。"}
+  ]
+}

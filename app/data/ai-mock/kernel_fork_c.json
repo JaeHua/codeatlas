@@ -1,0 +1,26 @@
+{
+  "filePath": "kernel/fork.c",
+  "summary": "通过写时复制（Copy-on-Write）创建进程，复制父进程的地址空间和文件描述符。",
+  "plainExplanation": "fork 系统调用通过复制父进程的 task_struct、页表和文件描述符来创建新进程。find_empty_process() 在 64 个槽位的任务数组中扫描空闲项。copy_process() 随后复制页目录、以写时复制标志（只读共享直到有写入）复制数据页，并从父进程继承打开的文件、信号处理器和当前工作目录。",
+  "keyFunctions": [
+    {"name": "find_empty_process", "role": "扫描任务数组，寻找可用的 PID 槽位并返回其索引"},
+    {"name": "copy_process", "role": "克隆父进程：复制页表、设置新的内核栈、继承打开的文件"},
+    {"name": "copy_mem", "role": "通过复制页目录项并将页面标记为 COW 来复制地址空间"},
+    {"name": "copy_page_tables", "role": "为子进程创建新页目录，以只读方式与父进程共享页面"},
+    {"name": "verify_area", "role": "在复制操作前验证用户态内存范围是否可访问"},
+    {"name": "put_fs_long", "role": "向用户空间写入子进程 PID（子进程返回 0，父进程返回非零）"}
+  ],
+  "prerequisites": ["写时复制（COW）语义", "x86 二级页表布局", "task_struct 各字段含义", "文件描述符表结构"],
+  "relatedFiles": [
+    {"path": "include/sched.h", "reason": "定义 task_struct 和 NR_TASKS 常量（64）"},
+    {"path": "mm/memory.c", "reason": "COW 触发 do_wp_page 在首次写入时分配私有副本"},
+    {"path": "kernel/exit.c", "reason": "父进程通过 sys_waitpid 等待子进程退出"},
+    {"path": "fs/exec.c", "reason": "execve 在 fork+exec 模式中替换子进程的地址空间"}
+  ],
+  "mermaid": "graph TD\n    A[sys_fork] --> B[find_empty_process 扫描空闲槽位]\n    B --> C{槽位 < NR_TASKS?}\n    C -->|否| D[返回 -EAGAIN]\n    C -->|是| E[copy_process 复制进程]\n    E --> F[分配 task_struct 槽位]\n    F --> G[copy_mem - 复制页表]\n    G --> H[copy_page_tables - COW 共享页面]\n    H --> I[继承文件描述符]\n    I --> J[复制信号处理和当前工作目录]\n    J --> K[将子进程状态设为 TASK_RUNNING]\n    K --> L[父进程返回子进程 PID，子进程返回 0]",
+  "faq": [
+    {"q": "写时复制（Copy-on-Write）在这里是什么意思？", "a": "fork 之后，父子进程共享相同的物理页面，页面被标记为只读。当任一进程向共享页面写入时，MMU 触发缺页异常，do_wp_page 分配一个可写的新副本。这避免了复制那些可能立即被 exec() 丢弃的内存页面。"},
+    {"q": "为什么 NR_TASKS 只有 64？", "a": "Linux 0.21 面向内存有限（4-16MB）的 i386 系统。任务数组静态分配以简化设计——无需动态内存分配。每个任务需要 4KB 内核栈页和页表，因此在 1991 年典型硬件条件下，64 个任务是合理的上限。"},
+    {"q": "子进程如何知道自己是子进程？", "a": "copy_process 在子进程的内核栈上将其 EAX 寄存器（返回值）设为 0，因此当子进程首次被调度并返回用户态时，fork() 返回 0。父进程通过正常的系统调用返回路径获得子进程的 PID。"}
+  ]
+}

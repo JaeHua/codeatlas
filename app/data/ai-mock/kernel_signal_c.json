@@ -1,0 +1,27 @@
+{
+  "filePath": "kernel/signal.c",
+  "summary": "POSIX 信号传递：向任务投递信号，分发信号处理函数，以及 sys_signal 注册功能。",
+  "plainExplanation": "信号是内核的异步通知机制。send_sig() 在目标任务信号位图中设置对应位，若目标处于可中断睡眠则将其唤醒。当进程从内核态返回用户态（或在下一次时钟滴答时），do_signal() 检查挂起的信号，运行已注册的处理函数（在用户栈上设置信号帧），或执行默认动作（忽略、停止或终止）。",
+  "keyFunctions": [
+    {"name": "send_sig", "role": "在目标任务挂起掩码中设置信号位并唤醒接收方"},
+    {"name": "sys_signal", "role": "为指定信号号注册用户态处理函数"},
+    {"name": "do_signal", "role": "在返回用户态时被调用：将挂起信号分发给处理函数或执行默认动作"},
+    {"name": "sys_sigaction", "role": "使用 sigaction 结构体进行更灵活的信号处理函数注册（SA_NOMASK 等）"},
+    {"name": "sys_kill", "role": "向进程组或指定 PID 发送信号"},
+    {"name": "setup_frame", "role": "在用户栈上创建信号帧，使处理函数能够通过 sigreturn 返回"}
+  ],
+  "prerequisites": ["信号位图（32 位掩码）", "任务状态转换", "信号帧的用户栈布局", "POSIX 信号语义"],
+  "relatedFiles": [
+    {"path": "include/sched.h", "reason": "task_struct 包含挂起信号掩码（signal）和处理函数表（sigaction）"},
+    {"path": "kernel/exit.c", "reason": "do_exit 向父进程发送 SIGCHLD；kill_session 发送 SIGHUP"},
+    {"path": "kernel/sched.c", "reason": "interruptible_sleep_on 可被信号中断"},
+    {"path": "drivers/tty_io.c", "reason": "TTY 层在 Ctrl-C/Ctrl-\\ 时发送 SIGINT/SIGQUIT"},
+    {"path": "kernel/fork.c", "reason": "子进程继承父进程的信号处理函数"}
+  ],
+  "mermaid": "graph TD\n    A[send_sig] --> B[置位 target->signal 掩码中的对应位]\n    B --> C{目标处于可中断睡眠？}\n    C -->|是| D[wake_up 唤醒目标]\n    C -->|否| E[信号变为挂起状态]\n    D --> E\n    F[do_signal - 返回用户态时] --> G{signal & ~blocked != 0?}\n    G -->|否| H[正常返回]\n    G -->|是| I[选取最高优先级的挂起信号]\n    I --> J{是否注册了处理函数？}\n    J -->|是| K[在用户栈上 setup_frame]\n    K --> L[将 EIP 设为处理函数地址]\n    L --> M[用户态处理函数执行]\n    M --> N[sigreturn 系统调用]\n    N --> O[恢复原始寄存器]\n    J -->|否| P{默认动作？}\n    P -->|SIG_DFL 终止| Q[do_exit]\n    P -->|SIG_DFL 忽略| H\n    P -->|SIG_DFL 停止| R[设为 TASK_STOPPED]",
+  "faq": [
+    {"q": "内核如何检测挂起的信号？", "a": "每次内核准备返回用户态（entry.S 中的 iret），ret_from_sys_call 检查 current->signal & ~current->blocked。若非零，do_signal() 处理最高编号的挂起信号（信号 1-31，编号越低优先级越高）。"},
+    {"q": "什么是信号帧（signal frame）？", "a": "当调用用户态处理函数时，内核在用户栈上压入一个信号帧，其中包含原始寄存器值（EIP、ESP、EFLAGS）和信号号。处理函数通过 __NR_sigreturn 返回，该调用弹出信号帧并在原始位置恢复执行。这就是信号如何透明地中断正常执行流程。"},
+    {"q": "为什么 SIGKILL 不能被捕获或忽略？", "a": "SIGKILL（9）和 SIGSTOP（19）由内核强制执行——do_signal() 从不为这些信号检查处理函数表，始终执行默认动作（终止或停止）。这确保管理员总能杀死失控进程，不论其安装了何种信号处理函数。"}
+  ]
+}

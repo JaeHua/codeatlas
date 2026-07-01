@@ -1,0 +1,61 @@
+[
+  {
+    "name": "Process Management",
+    "description": "进程调度、创建、销毁和信号处理",
+    "children": [
+      { "name": "Scheduler", "description": "CPU 调度器", "files": ["kernel/sched.c"] },
+      { "name": "Process Creation", "description": "fork 系统调用", "files": ["kernel/fork.c"] },
+      { "name": "Process Exit", "description": "进程退出", "files": ["kernel/exit.c"] },
+      { "name": "Signals", "description": "POSIX 信号", "files": ["kernel/signal.c"] },
+      { "name": "System Calls", "description": "系统调用入口", "files": ["kernel/sys.c"] },
+      { "name": "Panic", "description": "内核异常", "files": ["kernel/panic.c"] }
+    ]
+  },
+  {
+    "name": "Memory Management",
+    "description": "物理内存和虚拟内存管理",
+    "children": [
+      { "name": "Page Allocator", "description": "物理页面分配/释放", "files": ["mm/memory.c"] },
+      { "name": "Swapping", "description": "交换分区", "files": ["mm/swap.c"] },
+      { "name": "Page Fault", "description": "缺页中断处理", "files": ["mm/page.s"] }
+    ]
+  },
+  {
+    "name": "Filesystem",
+    "description": "VFS、缓冲区、inode 管理",
+    "children": [
+      { "name": "File Operations", "description": "open/read/write/close 系统调用", "files": ["fs/open.c"] },
+      { "name": "Exec", "description": "可执行文件加载", "files": ["fs/exec.c"] },
+      { "name": "Buffer Cache", "description": "磁盘块缓冲", "files": ["fs/buffer.c"] },
+      { "name": "Inode Management", "description": "inode 分配/释放", "files": ["fs/inode.c"] },
+      { "name": "Path Resolution", "description": "路径名 → inode 转换", "files": ["fs/namei.c"] },
+      { "name": "Super Block", "description": "文件系统挂载", "files": ["fs/super.c"] },
+      { "name": "Pipe", "description": "管道 IPC", "files": ["fs/pipe.c"] }
+    ]
+  },
+  {
+    "name": "Initialization",
+    "description": "内核引导和初始化",
+    "children": [
+      { "name": "Main", "description": "内核入口点", "files": ["init/main.c"] }
+    ]
+  },
+  {
+    "name": "Device Drivers",
+    "description": "硬件设备驱动",
+    "children": [
+      { "name": "TTY", "description": "终端 I/O", "files": ["drivers/tty_io.c"] },
+      { "name": "Console", "description": "显示器输出", "files": ["drivers/console.c"] },
+      { "name": "Keyboard", "description": "键盘输入", "files": ["drivers/keyboard.S"] },
+      { "name": "Hard Disk", "description": "IDE 硬盘驱动", "files": ["drivers/hd.c"] }
+    ]
+  },
+  {
+    "name": "Library",
+    "description": "内核工具函数",
+    "children": [
+      { "name": "String", "description": "字符串操作", "files": ["lib/string.c"] },
+      { "name": "Printf", "description": "格式化输出", "files": ["lib/vsprintf.c"] }
+    ]
+  }
+]

@@ -1,0 +1,78 @@
+{
+  "filePath": "fs/exec.c",
+  "summary": "Exec 系统调用：用新的可执行文件（a.out 格式）替换当前进程映像。",
+  "plainExplanation": "do_execve() 将新程序加载到当前进程中。它打开可执行文件，读取 a.out 头以获取 text/data/bss 段大小，释放旧页表，分配新页表，将 text 段映射为只读、data 段映射为可读写，并设置包含 argv/envp 和辅助向量的栈。最后将 EIP 设为入口点并返回用户态——旧程序消失，新程序开始执行。",
+  "keyFunctions": [
+    {
+      "name": "do_execve",
+      "role": "加载 a.out 二进制文件，替换地址空间，设置栈，跳转到入口点"
+    },
+    {
+      "name": "load_aout_binary",
+      "role": "解析 a.out 头并将 text/data 段加载到新页表中"
+    },
+    {
+      "name": "read_exec",
+      "role": "从可执行文件 inode 读取块到内核内存，以便复制到用户空间"
+    },
+    {
+      "name": "create_tables",
+      "role": "在新用户栈上构造 argv[] 和 envp[] 数组及 ELF 辅助向量"
+    },
+    {
+      "name": "count",
+      "role": "计算以 null 结尾的 argv 或 envp 数组中的元素个数"
+    },
+    {
+      "name": "change_ldt",
+      "role": "更新进程代码段和数据段的局部描述符表"
+    },
+    {
+      "name": "flush_old_exec",
+      "role": "释放旧页表，重置信号，为新二进制准备任务"
+    }
+  ],
+  "prerequisites": [
+    "a.out 二进制格式（struct exec 头）",
+    "基于段的内存模型（x86 LDT）",
+    "argv/envp 用户栈布局",
+    "EUID/RUID 和 setuid 执行"
+  ],
+  "relatedFiles": [
+    {
+      "path": "include/a.out.h",
+      "reason": "定义 struct exec 头，包含 a_magic、a_text、a_data、a_bss 字段"
+    },
+    {
+      "path": "mm/memory.c",
+      "reason": "exec 释放旧页表并为二进制段分配新页表"
+    },
+    {
+      "path": "fs/namei.c",
+      "reason": "exec 在加载前通过 open_namei 解析二进制文件路径"
+    },
+    {
+      "path": "fs/open.c",
+      "reason": "exec 使用文件操作从磁盘读取二进制文件"
+    },
+    {
+      "path": "kernel/fork.c",
+      "reason": "经典使用模式：fork() 后 execve() 运行新程序"
+    }
+  ],
+  "mermaid": "graph TD\n    A[do_execve path argv envp] --> B[open_namei 解析二进制路径]\n    B --> C{文件成功打开？}\n    C -->|否| D[返回错误]\n    C -->|是| E[从文件读取 a.out 头]\n    E --> F{魔数 = OMAGIC/NMAGIC/ZMAGIC？}\n    F -->|否| G[返回 -ENOEXEC]\n    F -->|是| H[检查 setuid/setgid 位]\n    H --> I[flush_old_exec - 释放旧页表]\n    I --> J[change_ldt - 设置新代码/数据段]\n    J --> K[load_aout_binary]\n    K --> L[在地址 0 映射 text 段（只读）]\n    L --> M[在 text 后映射 data 段（可读写）]\n    M --> N[分配 BSS - 零填充页面]\n    N --> O[create_tables - 将 envp、argv、argc 压入栈]\n    O --> P[将 EIP 设为头中的 a_entry]\n    P --> Q[将 ESP 设为新栈指针]\n    Q --> R[返回用户态 - 新程序运行]\n    S[用户栈布局] --> T[envp 字符串]\n    T --> U[argv 字符串]\n    U --> V(NULL)\n    V --> W[envp 指针]\n    W --> X(NULL)\n    X --> Y[argv 指针]\n    Y --> Z(NULL)\n    Z --> AA[argc]\n    AA --> AB[返回地址]",
+  "faq": [
+    {
+      "q": "OMAGIC、NMAGIC 和 ZMAGIC 是什么？",
+      "a": "这些是 a.out 格式的魔数。OMAGIC（0407）的 text 和 data 连续存放，不支持按需调页。NMAGIC（0410）分离 text 和 data，但二者均被调入。ZMAGIC（0413，'ZMAGIC'）将 text 和 data 按页边界对齐，支持按需调页——这是 Linux 的标准格式。内核检查魔数以确定如何映射段。"
+    },
+    {
+      "q": "setuid 执行如何工作？",
+      "a": "如果可执行文件设置了 setuid（04000）权限位，do_execve 将 current->euid 设为文件所有者的 UID。这使 /bin/passwd 等程序能以 root 权限运行。类似地，setgid（02000）设置有效 GID。"
+    },
+    {
+      "q": "exec 之后文件描述符会怎样？",
+      "a": "文件描述符在 exec 后保持打开，除非文件以 FD_CLOEXEC（close-on-exec）标志打开。这对 shell 管道至关重要：shell 打开管道，fork，子进程通过 dup2 + exec 继承管道文件描述符作为 stdin/stdout。"
+    }
+  ]
+}

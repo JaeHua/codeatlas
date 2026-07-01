@@ -1,26 +1,229 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─────── 默认色彩 (JS 加载前显示，运行时由 ThemeProvider 覆盖) ─────── */
+:root {
+  --background: #f5f0e8;
+  --foreground: #3d3629;
+  --card: #ede6d8;
+  --card-foreground: #3d3629;
+  --popover: #ede6d8;
+  --popover-foreground: #3d3629;
+  --primary: #c17e60;
+  --primary-foreground: #faf7f2;
+  --secondary: #e8dcc8;
+  --secondary-foreground: #5c4e3a;
+  --muted: #eae3d3;
+  --muted-foreground: #8c8273;
+  --accent: #e8dcc8;
+  --accent-foreground: #5c4e3a;
+  --destructive: #b55a4a;
+  --border: #d4c9b5;
+  --input: #d4c9b5;
+  --ring: #c17e60;
+  --radius: 0.5rem;
+  --sidebar: #ede6d8;
+  --sidebar-foreground: #3d3629;
+  --sidebar-primary: #c17e60;
+  --sidebar-primary-foreground: #faf7f2;
+  --sidebar-accent: #e8dcc8;
+  --sidebar-accent-foreground: #5c4e3a;
+  --sidebar-border: #d4c9b5;
+  --sidebar-ring: #c17e60;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  html {
+    font-family: var(--font-sans);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─────── 亚麻纹理背景 ─────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(139, 119, 90, 0.03) 2px,
+      rgba(139, 119, 90, 0.03) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(139, 119, 90, 0.02) 2px,
+      rgba(139, 119, 90, 0.02) 3px
+    );
+}
+
+/* ─────── 缝线边框工具类 ─────── */
+@utility border-stitch {
+  border-style: dashed;
+  border-width: 1px;
+  border-color: var(--border);
+  border-image: none;
+}
+
+@utility border-stitch-b {
+  border-bottom-style: dashed;
+  border-bottom-width: 1px;
+  border-color: var(--border);
+}
+
+@utility border-stitch-t {
+  border-top-style: dashed;
+  border-top-width: 1px;
+  border-color: var(--border);
+}
+
+@utility border-stitch-l {
+  border-left-style: dashed;
+  border-left-width: 1px;
+  border-color: var(--border);
+}
+
+@utility border-stitch-r {
+  border-right-style: dashed;
+  border-right-width: 1px;
+  border-color: var(--border);
+}
+
+/* ─────── 柔和阴影 ─────── */
+@utility shadow-fabric {
+  box-shadow:
+    0 1px 3px rgba(61, 54, 41, 0.05),
+    0 3px 8px rgba(61, 54, 41, 0.03);
+}
+
+@utility shadow-fabric-md {
+  box-shadow:
+    0 2px 6px rgba(61, 54, 41, 0.06),
+    0 6px 16px rgba(61, 54, 41, 0.04);
+}
+
+@utility shadow-fabric-lg {
+  box-shadow:
+    0 4px 12px rgba(61, 54, 41, 0.07),
+    0 12px 28px rgba(61, 54, 41, 0.05);
+}
+
+/* ─────── 布标 CTA 按钮 ─────── */
+.btn-fabric {
+  border-radius: calc(var(--radius) * 0.8);
+  border: 1.5px dashed var(--border);
+  background: var(--card);
+  color: var(--primary);
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  transition: all 200ms ease-out;
+  box-shadow: 0 1px 3px rgba(61, 54, 41, 0.04);
+}
+.btn-fabric:hover {
+  border-color: var(--primary);
+  background: color-mix(in oklch, var(--primary) 5%, var(--card));
+  box-shadow: 0 2px 8px rgba(61, 54, 41, 0.08);
+}
+.btn-fabric:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* ─────── 滚动条 ─────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* ─────── ReactFlow 覆盖 ─────── */
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* ─────── 动画工具类 ─────── */
+@keyframes fabric-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility animate-fabric-in {
+  animation: fabric-in 200ms ease-out;
+}
+
+@keyframes fabric-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@utility animate-fabric-pulse {
+  animation: fabric-pulse 2s ease-in-out infinite;
 }

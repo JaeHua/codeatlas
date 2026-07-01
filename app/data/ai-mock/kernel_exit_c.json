@@ -1,0 +1,26 @@
+{
+  "filePath": "kernel/exit.c",
+  "summary": "处理进程终止、僵尸进程回收以及 waitpid 系统调用。",
+  "plainExplanation": "do_exit() 在进程终止时被调用——它释放内存页面、关闭文件描述符、释放页表，并将进程状态设为 TASK_ZOMBIE。父进程通过 sys_waitpid() 收集退出码，该调用会阻塞直到子进程退出，或通过 WNOHANG 立即返回。内核还负责将孤儿进程的父进程重新指向 init（PID 1）。",
+  "keyFunctions": [
+    {"name": "do_exit", "role": "执行进程清理：释放内存和文件，通知父进程，变为僵尸状态"},
+    {"name": "sys_waitpid", "role": "阻塞或轮询等待子进程退出，返回其 PID 和退出码"},
+    {"name": "release", "role": "当不再有引用时，释放进程的页表和任务槽位"},
+    {"name": "kill_session", "role": "当会话首进程退出时，向会话内所有进程发送 SIGHUP"},
+    {"name": "tell_father", "role": "通知父进程子进程状态发生变化，供 waitpid 收集"}
+  ],
+  "prerequisites": ["僵尸进程状态（TASK_ZOMBIE）", "进程组与会话（session）", "SIGCHLD 信号", "POSIX wait() 语义"],
+  "relatedFiles": [
+    {"path": "include/sched.h", "reason": "定义 TASK_ZOMBIE 状态和 exit_signal 字段"},
+    {"path": "kernel/fork.c", "reason": "由 fork 创建的进程最终会调用 do_exit"},
+    {"path": "kernel/signal.c", "reason": "子进程终止时向父进程发送 SIGCHLD"},
+    {"path": "mm/memory.c", "reason": "free_page_tables 释放进程的虚拟内存"},
+    {"path": "kernel/sched.c", "reason": "do_exit 变为僵尸后调用 schedule() 让出 CPU"}
+  ],
+  "mermaid": "graph TD\n    A[do_exit] --> B[释放信号量]\n    B --> C[关闭所有文件描述符]\n    C --> D[free_page_tables - 释放内存]\n    D --> E[将状态设为 TASK_ZOMBIE]\n    E --> F[在 task_struct 中记录退出码]\n    F --> G{是否有父进程？}\n    G -->|是| H[通知父进程，发送 SIGCHLD]\n    G -->|否| I[将子进程的父进程指向 init]\n    H --> J[schedule - 永不返回]\n    I --> J\n    K[sys_waitpid] --> L[在子进程中搜索僵尸]\n    L --> M{找到僵尸？}\n    M -->|是| N[收集退出码，释放任务槽位]\n    M -->|否| O{是否 WNOHANG？}\n    O -->|是| P[返回 0]\n    O -->|否| Q[睡眠等待子进程退出]",
+  "faq": [
+    {"q": "僵尸进程发生了什么？", "a": "僵尸进程仅在任务数组中保留其 task_struct 条目，持有退出码。它没有内存、没有文件、没有页表。其存在的唯一目的是让父进程通过 waitpid() 收集退出状态。父进程调用 waitpid() 后，release() 彻底释放该任务槽位。"},
+    {"q": "如果父进程先于子进程死亡怎么办？", "a": "内核将孤儿进程的父进程重新指向 init（PID 1）。init 的设计保证在循环中持续调用 waitpid()，因此孤儿僵尸进程总能被回收。如果 init 自身退出，内核将 panic——init 绝对不能退出。"},
+    {"q": "退出码 0xff00 意味着什么？", "a": "在 Linux 0.21 中退出码编码为 (code << 8)，放在高字节中。当进程被信号 N 杀死时，低字节包含 N。宏 WIFEXITED(status) 检查低字节是否为 0，WEXITSTATUS(status) 提取高字节。"}
+  ]
+}

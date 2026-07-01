@@ -1,0 +1,25 @@
+{
+  "filePath": "kernel/sched.c",
+  "summary": "实现 Linux 0.21 调度器，包含睡眠/唤醒机制与协作式多任务调度。",
+  "plainExplanation": "这是 Linux 进程调度的核心。schedule() 函数通过遍历任务数组，选择优先级最高且剩余时间片（counter）最多的 TASK_RUNNING 进程作为下一个运行任务，然后通过 switch_to() 执行上下文切换。由于这是协作式（非抢占）调度器，进程通过 sleep_on/wake_up 原语主动让出 CPU，或在等待事件发生时被唤醒。",
+  "keyFunctions": [
+    {"name": "schedule", "role": "遍历任务数组，选择下一个可运行的任务并执行上下文切换"},
+    {"name": "sleep_on", "role": "将当前任务放入等待队列并设置为不可中断睡眠状态，用于阻塞 I/O"},
+    {"name": "wake_up", "role": "唤醒指定等待队列上的所有任务，将其状态设为 TASK_RUNNING"},
+    {"name": "switch_to", "role": "底层上下文切换：保存当前寄存器状态并恢复下一个任务的寄存器"}
+  ],
+  "prerequisites": ["进程状态（TASK_RUNNING、TASK_UNINTERRUPTIBLE、TASK_ZOMBIE）", "task_struct 结构体布局", "定时器中断与 jiffies 计数", "基于内核栈的上下文切换机制"],
+  "relatedFiles": [
+    {"path": "include/sched.h", "reason": "定义 task_struct 结构体及进程状态常量"},
+    {"path": "kernel/fork.c", "reason": "创建新任务，这些任务将由调度器管理"},
+    {"path": "kernel/exit.c", "reason": "do_exit 调用 schedule() 让出 CPU，使进程沦为僵尸状态"},
+    {"path": "kernel/sys.c", "reason": "sys_getpid 等系统调用与当前任务交互"}
+  ],
+  "mermaid": "graph TD\n    A[schedule 被调用] --> B[遍历 task 数组]\n    B --> C{找到 counter 最大的 TASK_RUNNING 任务？}\n    C -->|是| D[设置 next = 找到的任务]\n    C -->|否| E[为所有任务重新计算 counter]\n    E --> B\n    D --> F[next != current?]\n    F -->|是| G[switch_to 切换到 next]\n    F -->|否| H[返回，继续运行当前任务]\n    G --> I[next 以 TASK_RUNNING 状态运行]\n    I --> J[next 的上下文中从 switch_to 返回]\n    H --> K[do_timer 最终再次调用 schedule]\n    K --> A",
+  "faq": [
+    {"q": "为什么 Linux 0.21 使用协作式多任务而非抢占式？", "a": "Linux 0.21 内核诞生于抢占支持出现之前。任务在执行阻塞操作（磁盘 I/O、终端读取）或当定时器中断从用户态触发时，主动调用 schedule()。内核对内核态代码没有强制抢占机制。"},
+    {"q": "sleep_on 实际上做了什么？", "a": "它在当前进程的内核栈上创建一个临时 task_struct，指向等待队列，将当前状态设为 TASK_UNINTERRUPTIBLE，然后调用 schedule()。当被唤醒后，恢复前一个等待者的指针，从而在栈上形成一个隐式的等待者链表。"},
+    {"q": "wake_up 与 interruptible_sleep_on 有何区别？", "a": "wake_up 将等待队列上所有任务状态设为 TASK_RUNNING，使其可运行。interruptible_sleep_on 使用 TASK_INTERRUPTIBLE 状态，允许信号提前中断睡眠；而普通的 sleep_on 使用 TASK_UNINTERRUPTIBLE，会忽略所有信号。"},
+    {"q": "counter 字段在调度算法中起什么作用？", "a": "counter 记录当前调度时间片剩余的定时器滴答数。每次定时器中断将其递减；归零后 schedule() 选择新任务。重新分配时使用公式 counter = counter/2 + priority，这使得交互式任务（较多睡眠、保留较多 counter）能获得更高的响应优先级。"}
+  ]
+}

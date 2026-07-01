@@ -1,0 +1,27 @@
+{
+  "filePath": "fs/namei.c",
+  "summary": "路径名解析：遍历目录树，将文件路径映射到对应的 inode。",
+  "plainExplanation": "namei() 是内核的路径行走引擎。从进程的当前目录（或绝对路径的根目录）开始，逐步遍历路径的每个组件（如 '/usr/bin/ls'），在每个父目录中查找每个名称。每一步读取目录块，搜索匹配的目录项，解析到子 inode。它处理 . 和 .. 条目、符号链接（若支持）以及每层的权限检查。open_namei() 在此基础上封装了带创建/截断选项的打开操作。",
+  "keyFunctions": [
+    {"name": "namei", "role": "将路径字符串解析为其 inode，跟随所有目录组件"},
+    {"name": "open_namei", "role": "按路径打开或创建文件，返回 inode，支持创建和截断选项"},
+    {"name": "dir_namei", "role": "将路径解析为父目录 inode 并返回最终文件名组件"},
+    {"name": "get_dir", "role": "在目录 inode 的数据块中查找文件名，返回其 inode 编号"},
+    {"name": "follow_link", "role": "跟踪符号链接 inode，读取目标路径并重新开始解析"},
+    {"name": "permission", "role": "根据进程的 UID/GID 检查读/写/执行权限位"}
+  ],
+  "prerequisites": ["inode 目录结构（直接块、间接块）", "权限位 rwx", "挂载点遍历", "符号链接语义"],
+  "relatedFiles": [
+    {"path": "include/fs.h", "reason": "定义 inode 标志、目录项格式和权限常量"},
+    {"path": "fs/inode.c", "reason": "namei 使用 iget 从磁盘加载 inode；iput 释放 inode"},
+    {"path": "fs/open.c", "reason": "sys_open 在打开文件前调用 open_namei 解析文件路径"},
+    {"path": "fs/super.c", "reason": "挂载点影响路径解析：穿过挂载点时交换 root/base"},
+    {"path": "fs/buffer.c", "reason": "目录读取通过缓冲区缓存使用 bread 加载目录块"}
+  ],
+  "mermaid": "graph TD\n    A[namei path] --> B{路径以 '/' 开头？}\n    B -->|是| C[从 current->root 开始]\n    B -->|否| D[从 current->pwd 开始]\n    C --> E[获取下一个路径组件]\n    D --> E\n    E --> F{最后一个组件？}\n    F -->|是| G[返回此 inode]\n    F -->|否| H{当前 inode 是目录？}\n    H -->|否| I[返回 -ENOTDIR]\n    H -->|是| J[permission 检查目录执行权限]\n    J --> K{允许？}\n    K -->|否| L[返回 -EACCES]\n    K -->|是| M[get_dir - 在目录中搜索名称]\n    M --> N{找到？}\n    N -->|否| O[返回 -ENOENT]\n    N -->|是| P[iget 按编号加载 inode]\n    P --> Q{是挂载点？}\n    Q -->|是| R[切换到挂载的根 inode]\n    Q -->|否| S[iput 父目录，前进到子目录]\n    R --> S\n    S --> E",
+  "faq": [
+    {"q": "get_dir 实际上做了什么？", "a": "它读取目录块（通过 bread）并扫描匹配文件名的目录项。每个目录项是一个 16 字节结构体 {ino2, name[14]}。它逐字符比较名称（最多 14 个字符，null 填充）。若找到则返回 inode 编号；否则返回 0。"},
+    {"q": ". 和 .. 是如何处理的？", "a": "它们是真实的目录项：. 具有目录自身的 inode 编号；.. 具有父目录的 inode 编号。namei 像处理其他条目一样处理它们——查找并前进到结果。根目录的 .. 指向自身。"},
+    {"q": "穿过挂载点时会发生什么？", "a": "当 namei 解析到作为挂载点的 inode（设置了 i_mount 标志）时，切换到已挂载文件系统的根 inode。follow_up 函数处理此操作。在 .. 遍历时，检查当前目录是否为文件系统根，若是则切换回覆盖的挂载点。"}
+  ]
+}

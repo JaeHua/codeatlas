@@ -1,0 +1,26 @@
+{
+  "filePath": "mm/swap.c",
+  "summary": "交换子系统：在内存不足时将页面换出到磁盘，并在需要时按需换入。",
+  "plainExplanation": "当 get_free_page() 失败（无空闲页面）时，内核调用 swap_out() 选择一个牺牲页面，将其写入交换设备，回收其物理帧。swap_in() 执行反向操作：当被换出的页面被访问时，缺页异常处理程序将其从交换空间读回并重新映射到进程地址空间。交换位图跟踪哪些交换槽正在使用。",
+  "keyFunctions": [
+    {"name": "swap_out", "role": "选择要换出的页面，将其写入交换空间，释放物理页面"},
+    {"name": "swap_in", "role": "从交换设备将页面读回新分配的物理页面"},
+    {"name": "swap_free", "role": "当页面取消映射或重用时，在交换位图中标记交换槽为空闲"},
+    {"name": "try_to_swap_out", "role": "尝试从指定进程的页表中换出特定页面"},
+    {"name": "get_swap_page", "role": "从交换位图中分配一个空闲交换槽并返回其偏移量"},
+    {"name": "rw_swap_page", "role": "在指定交换槽偏移处对交换设备进行底层读写"}
+  ],
+  "prerequisites": ["按需调页与缺页异常", "交换设备几何参数", "页面置换算法（FIFO/时钟）", "交换位图管理"],
+  "relatedFiles": [
+    {"path": "mm/memory.c", "reason": "get_free_page 在无空闲页面时触发 swap_out；do_no_page 为被换出页面调用 swap_in"},
+    {"path": "kernel/sys.c", "reason": "sys_setup 从引导参数初始化交换设备"},
+    {"path": "fs/buffer.c", "reason": "交换 I/O 使用类似缓冲区缓存的块读写访问交换设备"},
+    {"path": "mm/page.s", "reason": "汇编级缺页异常处理程序，分发到 do_no_page 或触发 swap_in"}
+  ],
+  "mermaid": "graph TD\n    A[get_free_page 被调用] --> B{是否有空闲页面？}\n    B -->|是| C[返回页面地址]\n    B -->|否| D[swap_out]\n    D --> E[遍历所有任务页表]\n    E --> F[try_to_swap_out 处理候选页面]\n    F --> G{页面是否脏？}\n    G -->|是| H[通过 rw_swap_page 将页面写入交换设备]\n    G -->|否| I[页面干净，直接丢弃]\n    H --> J[在页表项中记录交换槽]\n    I --> J\n    J --> K[使 PTE 失效 - 标记为不存在]\n    K --> L[free_page - 回收物理帧]\n    L --> C\n    M[访问被换出页面触发缺页] --> N[do_no_page]\n    N --> O{PTE 中有交换槽？}\n    O -->|是| P[get_free_page 分配新帧]\n    P --> Q[swap_in - 从交换设备读取]\n    Q --> R[put_page - 映射到页表]\n    R --> S[swap_free - 释放交换槽]\n    O -->|否| T[从可执行文件或零页加载]",
+  "faq": [
+    {"q": "交换位图如何工作？", "a": "位图中每个交换槽（每个槽 = 一个页面 = 4KB）对应一位。0 表示空闲，1 表示使用中。get_swap_page 扫描找到第一个 0 位并设置它。swap_free 清除该位。位图大小为 SWAP_PAGES / 8 字节，在引导时静态分配。"},
+    {"q": "Linux 0.21 使用什么样的页面置换策略？", "a": "本质上是原始的 FIFO——swap_out 线性遍历任务槽位和任务页表，试图换出找到的任意页面。尚无 LRU 或时钟算法。这虽然简单，但可能刚好把即将需要的高频使用页面换出。"},
+    {"q": "干净页面可以不经过 I/O 而换出吗？", "a": "可以。如果页面从可执行文件加载且从未被修改（脏位未设置），内核可以直接丢弃它而无需写入交换空间——页面可以从原始可执行文件重新加载。只有脏页面（栈、堆、数据段）必须在换出前写入交换设备。"}
+  ]
+}

@@ -1,0 +1,335 @@
+[
+  {
+    "name": "kernel",
+    "path": "kernel",
+    "type": "directory",
+    "children": [
+      {
+        "name": "sched.c",
+        "path": "kernel/sched.c",
+        "type": "file",
+        "symbols": [
+          { "name": "schedule", "kind": "function", "file": "kernel/sched.c", "line": 34, "signature": "void schedule(void)" },
+          { "name": "sleep_on", "kind": "function", "file": "kernel/sched.c", "line": 118, "signature": "void sleep_on(struct task_struct **p)" },
+          { "name": "wake_up", "kind": "function", "file": "kernel/sched.c", "line": 145, "signature": "void wake_up(struct task_struct **p)" },
+          { "name": "task_struct", "kind": "struct", "file": "kernel/sched.c", "line": 12 },
+          { "name": "CURRENT_TASK", "kind": "macro", "file": "kernel/sched.c", "line": 8 }
+        ]
+      },
+      {
+        "name": "fork.c",
+        "path": "kernel/fork.c",
+        "type": "file",
+        "symbols": [
+          { "name": "copy_process", "kind": "function", "file": "kernel/fork.c", "line": 28, "signature": "int copy_process(int nr, long ebp, ...)" },
+          { "name": "find_empty_process", "kind": "function", "file": "kernel/fork.c", "line": 1, "signature": "int find_empty_process(void)" },
+          { "name": "verify_area", "kind": "function", "file": "kernel/fork.c", "line": 89, "signature": "void verify_area(void *addr, int size)" }
+        ]
+      },
+      {
+        "name": "exit.c",
+        "path": "kernel/exit.c",
+        "type": "file",
+        "symbols": [
+          { "name": "do_exit", "kind": "function", "file": "kernel/exit.c", "line": 42, "signature": "void do_exit(long code)" },
+          { "name": "sys_waitpid", "kind": "function", "file": "kernel/exit.c", "line": 112, "signature": "int sys_waitpid(pid_t pid, unsigned long *stat_addr, int options)" }
+        ]
+      },
+      {
+        "name": "sys.c",
+        "path": "kernel/sys.c",
+        "type": "file",
+        "symbols": [
+          { "name": "sys_setup", "kind": "function", "file": "kernel/sys.c", "line": 1, "signature": "void sys_setup(void)" },
+          { "name": "sys_getpid", "kind": "function", "file": "kernel/sys.c", "line": 56, "signature": "int sys_getpid(void)" }
+        ]
+      },
+      {
+        "name": "signal.c",
+        "path": "kernel/signal.c",
+        "type": "file",
+        "symbols": [
+          { "name": "send_sig", "kind": "function", "file": "kernel/signal.c", "line": 23, "signature": "int send_sig(long sig, struct task_struct *p, int priv)" },
+          { "name": "sys_signal", "kind": "function", "file": "kernel/signal.c", "line": 67, "signature": "int sys_signal(int signum, long handler, long restorer)" },
+          { "name": "do_signal", "kind": "function", "file": "kernel/signal.c", "line": 134, "signature": "void do_signal(long signr, long eip, ...)" }
+        ]
+      },
+      {
+        "name": "panic.c",
+        "path": "kernel/panic.c",
+        "type": "file",
+        "symbols": [
+          { "name": "panic", "kind": "function", "file": "kernel/panic.c", "line": 1, "signature": "void panic(const char *s)" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "mm",
+    "path": "mm",
+    "type": "directory",
+    "children": [
+      {
+        "name": "memory.c",
+        "path": "mm/memory.c",
+        "type": "file",
+        "symbols": [
+          { "name": "do_no_page", "kind": "function", "file": "mm/memory.c", "line": 78, "signature": "void do_no_page(unsigned long error_code, unsigned long address)" },
+          { "name": "do_wp_page", "kind": "function", "file": "mm/memory.c", "line": 156, "signature": "void do_wp_page(unsigned long error_code, unsigned long address)" },
+          { "name": "free_page", "kind": "function", "file": "mm/memory.c", "line": 234, "signature": "unsigned long free_page(unsigned long addr)" },
+          { "name": "get_free_page", "kind": "function", "file": "mm/memory.c", "line": 189, "signature": "unsigned long get_free_page(void)" }
+        ]
+      },
+      {
+        "name": "swap.c",
+        "path": "mm/swap.c",
+        "type": "file",
+        "symbols": [
+          { "name": "swap_free", "kind": "function", "file": "mm/swap.c", "line": 12, "signature": "void swap_free(int entry)" },
+          { "name": "swap_out", "kind": "function", "file": "mm/swap.c", "line": 45, "signature": "int swap_out(unsigned long *table_ptr)" },
+          { "name": "swap_in", "kind": "function", "file": "mm/swap.c", "line": 89, "signature": "void swap_in(unsigned long *table_ptr)" },
+          { "name": "swap_map", "kind": "struct", "file": "mm/swap.c", "line": 1 }
+        ]
+      },
+      {
+        "name": "page.s",
+        "path": "mm/page.s",
+        "type": "file",
+        "symbols": [
+          { "name": "page_fault", "kind": "function", "file": "mm/page.s", "line": 1, "signature": "_page_fault" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "fs",
+    "path": "fs",
+    "type": "directory",
+    "children": [
+      {
+        "name": "exec.c",
+        "path": "fs/exec.c",
+        "type": "file",
+        "symbols": [
+          { "name": "do_execve", "kind": "function", "file": "fs/exec.c", "line": 34, "signature": "int do_execve(unsigned long *eip, ...)" },
+          { "name": "load_aout_binary", "kind": "function", "file": "fs/exec.c", "line": 112, "signature": "int load_aout_binary(struct linux_binprm *bprm)" }
+        ]
+      },
+      {
+        "name": "open.c",
+        "path": "fs/open.c",
+        "type": "file",
+        "symbols": [
+          { "name": "sys_open", "kind": "function", "file": "fs/open.c", "line": 28, "signature": "int sys_open(const char *filename, int flag, int mode)" },
+          { "name": "sys_close", "kind": "function", "file": "fs/open.c", "line": 67, "signature": "int sys_close(unsigned int fd)" },
+          { "name": "sys_read", "kind": "function", "file": "fs/open.c", "line": 89, "signature": "int sys_read(unsigned int fd, char *buf, int count)" },
+          { "name": "sys_write", "kind": "function", "file": "fs/open.c", "line": 112, "signature": "int sys_write(unsigned int fd, char *buf, int count)" },
+          { "name": "sys_lseek", "kind": "function", "file": "fs/open.c", "line": 134, "signature": "int sys_lseek(unsigned int fd, off_t offset, int origin)" }
+        ]
+      },
+      {
+        "name": "read_write.c",
+        "path": "fs/read_write.c",
+        "type": "file",
+        "symbols": [
+          { "name": "rw_verify_area", "kind": "function", "file": "fs/read_write.c", "line": 1, "signature": "int rw_verify_area(int type, struct inode *inode, ...)" }
+        ]
+      },
+      {
+        "name": "buffer.c",
+        "path": "fs/buffer.c",
+        "type": "file",
+        "symbols": [
+          { "name": "bread", "kind": "function", "file": "fs/buffer.c", "line": 23, "signature": "struct buffer_head *bread(int dev, int block)" },
+          { "name": "brelse", "kind": "function", "file": "fs/buffer.c", "line": 89, "signature": "void brelse(struct buffer_head *buf)" },
+          { "name": "getblk", "kind": "function", "file": "fs/buffer.c", "line": 56, "signature": "struct buffer_head *getblk(int dev, int block)" },
+          { "name": "buffer_head", "kind": "struct", "file": "fs/buffer.c", "line": 1 },
+          { "name": "BLOCK_SIZE", "kind": "macro", "file": "fs/buffer.c", "line": 5 }
+        ]
+      },
+      {
+        "name": "super.c",
+        "path": "fs/super.c",
+        "type": "file",
+        "symbols": [
+          { "name": "mount_root", "kind": "function", "file": "fs/super.c", "line": 12, "signature": "void mount_root(void)" },
+          { "name": "super_block", "kind": "struct", "file": "fs/super.c", "line": 1 }
+        ]
+      },
+      {
+        "name": "inode.c",
+        "path": "fs/inode.c",
+        "type": "file",
+        "symbols": [
+          { "name": "iget", "kind": "function", "file": "fs/inode.c", "line": 23, "signature": "struct inode *iget(int dev, int nr)" },
+          { "name": "iput", "kind": "function", "file": "fs/inode.c", "line": 45, "signature": "void iput(struct inode *inode)" },
+          { "name": "inode", "kind": "struct", "file": "fs/inode.c", "line": 1 }
+        ]
+      },
+      {
+        "name": "namei.c",
+        "path": "fs/namei.c",
+        "type": "file",
+        "symbols": [
+          { "name": "namei", "kind": "function", "file": "fs/namei.c", "line": 34, "signature": "struct inode *namei(const char *pathname)" },
+          { "name": "open_namei", "kind": "function", "file": "fs/namei.c", "line": 78, "signature": "int open_namei(const char *pathname, int flag, int mode, struct inode **inode)" }
+        ]
+      },
+      {
+        "name": "pipe.c",
+        "path": "fs/pipe.c",
+        "type": "file",
+        "symbols": [
+          { "name": "sys_pipe", "kind": "function", "file": "fs/pipe.c", "line": 1, "signature": "int sys_pipe(unsigned long *fildes)" },
+          { "name": "pipe_read", "kind": "function", "file": "fs/pipe.c", "line": 34, "signature": "int pipe_read(struct inode *inode, struct file *filp, char *buf, int count)" },
+          { "name": "pipe_write", "kind": "function", "file": "fs/pipe.c", "line": 67, "signature": "int pipe_write(struct inode *inode, struct file *filp, char *buf, int count)" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "include",
+    "path": "include",
+    "type": "directory",
+    "children": [
+      {
+        "name": "sched.h",
+        "path": "include/sched.h",
+        "type": "file",
+        "symbols": [
+          { "name": "task_struct", "kind": "struct", "file": "include/sched.h", "line": 12 },
+          { "name": "TASK_RUNNING", "kind": "macro", "file": "include/sched.h", "line": 5 },
+          { "name": "TASK_INTERRUPTIBLE", "kind": "macro", "file": "include/sched.h", "line": 6 },
+          { "name": "TASK_UNINTERRUPTIBLE", "kind": "macro", "file": "include/sched.h", "line": 7 }
+        ]
+      },
+      {
+        "name": "mm.h",
+        "path": "include/mm.h",
+        "type": "file",
+        "symbols": [
+          { "name": "PAGE_SIZE", "kind": "macro", "file": "include/mm.h", "line": 3 },
+          { "name": "PAGE_MASK", "kind": "macro", "file": "include/mm.h", "line": 4 }
+        ]
+      },
+      {
+        "name": "fs.h",
+        "path": "include/fs.h",
+        "type": "file",
+        "symbols": [
+          { "name": "file", "kind": "struct", "file": "include/fs.h", "line": 8 },
+          { "name": "file_operations", "kind": "struct", "file": "include/fs.h", "line": 23 },
+          { "name": "O_RDONLY", "kind": "macro", "file": "include/fs.h", "line": 1 },
+          { "name": "O_WRONLY", "kind": "macro", "file": "include/fs.h", "line": 2 },
+          { "name": "O_RDWR", "kind": "macro", "file": "include/fs.h", "line": 3 }
+        ]
+      },
+      {
+        "name": "unistd.h",
+        "path": "include/unistd.h",
+        "type": "file",
+        "symbols": [
+          { "name": "__NR_setup", "kind": "macro", "file": "include/unistd.h", "line": 1 },
+          { "name": "__NR_exit", "kind": "macro", "file": "include/unistd.h", "line": 2 },
+          { "name": "__NR_fork", "kind": "macro", "file": "include/unistd.h", "line": 3 },
+          { "name": "__NR_read", "kind": "macro", "file": "include/unistd.h", "line": 4 },
+          { "name": "__NR_write", "kind": "macro", "file": "include/unistd.h", "line": 5 },
+          { "name": "__NR_open", "kind": "macro", "file": "include/unistd.h", "line": 6 },
+          { "name": "__NR_close", "kind": "macro", "file": "include/unistd.h", "line": 7 },
+          { "name": "__NR_waitpid", "kind": "macro", "file": "include/unistd.h", "line": 8 },
+          { "name": "__NR_execve", "kind": "macro", "file": "include/unistd.h", "line": 11 },
+          { "name": "__NR_signal", "kind": "macro", "file": "include/unistd.h", "line": 48 },
+          { "name": "__NR_getpid", "kind": "macro", "file": "include/unistd.h", "line": 20 },
+          { "name": "__NR_pipe", "kind": "macro", "file": "include/unistd.h", "line": 42 }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "init",
+    "path": "init",
+    "type": "directory",
+    "children": [
+      {
+        "name": "main.c",
+        "path": "init/main.c",
+        "type": "file",
+        "symbols": [
+          { "name": "main", "kind": "function", "file": "init/main.c", "line": 112, "signature": "void main(void)" },
+          { "name": "init", "kind": "function", "file": "init/main.c", "line": 89, "signature": "void init(void)" },
+          { "name": "time_init", "kind": "function", "file": "init/main.c", "line": 34, "signature": "static void time_init(void)" },
+          { "name": "tty_init", "kind": "function", "file": "init/main.c", "line": 45, "signature": "static void tty_init(void)" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "drivers",
+    "path": "drivers",
+    "type": "directory",
+    "children": [
+      {
+        "name": "tty_io.c",
+        "path": "drivers/tty_io.c",
+        "type": "file",
+        "symbols": [
+          { "name": "tty_read", "kind": "function", "file": "drivers/tty_io.c", "line": 34, "signature": "int tty_read(struct inode *inode, struct file *filp, char *buf, int count)" },
+          { "name": "tty_write", "kind": "function", "file": "drivers/tty_io.c", "line": 78, "signature": "int tty_write(struct inode *inode, struct file *filp, char *buf, int count)" },
+          { "name": "tty_struct", "kind": "struct", "file": "drivers/tty_io.c", "line": 1 }
+        ]
+      },
+      {
+        "name": "console.c",
+        "path": "drivers/console.c",
+        "type": "file",
+        "symbols": [
+          { "name": "con_write", "kind": "function", "file": "drivers/console.c", "line": 45, "signature": "void con_write(struct tty_struct *tty)" },
+          { "name": "con_init", "kind": "function", "file": "drivers/console.c", "line": 12, "signature": "void con_init(void)" }
+        ]
+      },
+      {
+        "name": "keyboard.S",
+        "path": "drivers/keyboard.S",
+        "type": "file",
+        "symbols": [
+          { "name": "keyboard_interrupt", "kind": "function", "file": "drivers/keyboard.S", "line": 1, "signature": "_keyboard_interrupt" }
+        ]
+      },
+      {
+        "name": "hd.c",
+        "path": "drivers/hd.c",
+        "type": "file",
+        "symbols": [
+          { "name": "hd_init", "kind": "function", "file": "drivers/hd.c", "line": 1, "signature": "void hd_init(void)" },
+          { "name": "do_hd_request", "kind": "function", "file": "drivers/hd.c", "line": 45, "signature": "void do_hd_request(void)" }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "lib",
+    "path": "lib",
+    "type": "directory",
+    "children": [
+      {
+        "name": "string.c",
+        "path": "lib/string.c",
+        "type": "file",
+        "symbols": [
+          { "name": "strlen", "kind": "function", "file": "lib/string.c", "line": 1, "signature": "int strlen(const char *s)" },
+          { "name": "strcpy", "kind": "function", "file": "lib/string.c", "line": 12, "signature": "char *strcpy(char *dest, const char *src)" },
+          { "name": "memcpy", "kind": "function", "file": "lib/string.c", "line": 34, "signature": "void *memcpy(void *dest, const void *src, int n)" }
+        ]
+      },
+      {
+        "name": "vsprintf.c",
+        "path": "lib/vsprintf.c",
+        "type": "file",
+        "symbols": [
+          { "name": "vsprintf", "kind": "function", "file": "lib/vsprintf.c", "line": 1, "signature": "int vsprintf(char *buf, const char *fmt, va_list args)" },
+          { "name": "printk", "kind": "function", "file": "lib/vsprintf.c", "line": 89, "signature": "int printk(const char *fmt, ...)" }
+        ]
+      }
+    ]
+  }
+]

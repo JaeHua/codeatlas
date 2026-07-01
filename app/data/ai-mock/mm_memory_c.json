@@ -1,0 +1,28 @@
+{
+  "filePath": "mm/memory.c",
+  "summary": "物理页面分配器与缺页异常处理程序，实现按需调页和写时复制机制。",
+  "plainExplanation": "这是内存管理的核心。do_no_page() 处理进程访问未映射地址时触发的缺页异常——从磁盘（可执行文件）加载页面，或为栈/堆增长分配零填充页面。do_wp_page() 处理写时复制：当进程向共享只读页面写入时，分配私有副本。get_free_page() 和 free_page() 管理一个简单的 4KB 物理页链表。",
+  "keyFunctions": [
+    {"name": "do_no_page", "role": "处理主缺页异常：从磁盘加载页面或为新映射分配零页"},
+    {"name": "do_wp_page", "role": "处理写时复制缺页异常：为写入方复制共享只读页面"},
+    {"name": "get_free_page", "role": "从页面池中返回一个空闲 4KB 页面的物理地址"},
+    {"name": "free_page", "role": "将物理页面归还给空闲链表（通过页面的第一个字链接）"},
+    {"name": "write_verify", "role": "检查页面是否为共享 COW 状态，必要时触发 do_wp_page"},
+    {"name": "put_page", "role": "将物理页面映射到进程页表中指定的虚拟地址"},
+    {"name": "un_wp_page", "role": "内部辅助函数：分配新页面并复制内容以打破 COW"},
+    {"name": "free_page_tables", "role": "进程退出时递归释放所有页表项和页面"}
+  ],
+  "prerequisites": ["页表结构（PDE/PTE）", "写时复制语义", "按需调页", "x86 架构物理地址与虚拟地址"],
+  "relatedFiles": [
+    {"path": "kernel/fork.c", "reason": "fork 将页面标记为 COW；do_wp_page 处理由此产生的缺页异常"},
+    {"path": "fs/exec.c", "reason": "exec 映射二进制段；do_no_page 在首次访问时从可执行文件加载页面"},
+    {"path": "mm/swap.c", "reason": "交换程序回收物理页面并调用 free_page 将其归还页面池"},
+    {"path": "kernel/exit.c", "reason": "do_exit 调用 free_page_tables 释放所有进程内存"}
+  ],
+  "mermaid": "graph TD\n    A[缺页异常] --> B{原因？}\n    B -->|页面不存在| C[do_no_page]\n    B -->|写入只读页面| D[do_wp_page]\n    C --> E{地址在 BSS/栈范围内？}\n    E -->|是| F[get_free_page - 分配零页面]\n    E -->|否| G{有 inode 映射？}\n    G -->|是| H[bread - 从块设备读取页面]\n    G -->|否| I[返回错误 - SEGV]\n    F --> J[put_page - 映射到页表]\n    H --> J\n    J --> K[返回用户态，指令重试]\n    D --> L{页面共享数 >1？}\n    L -->|是| M[get_free_page - 分配新的可写副本]\n    L -->|否| N[将 PTE 标记为可写]\n    M --> O[从原始页面复制内容]\n    O --> P[更新 PTE 指向新页面]\n    P --> Q[若引用计数归零则 free_page 旧页面]\n    Q --> K\n    N --> K",
+  "faq": [
+    {"q": "空闲页面链表如何工作？", "a": "它是一个单向链表，通过空闲页面自身链接起来。每个空闲页面的前 4 字节存储下一个空闲页面的地址。get_free_page 跟随链表头部，free_page 将页面压入链表。该链表在引导时从内核内存末尾（memory_end 到 16MB）初始化。"},
+    {"q": "什么触发写时复制？", "a": "fork() 期间，父进程所有可写数据页在父子进程的页表中都被标记为只读。页面帧的引用计数递增。当任一进程写入时，CPU 触发缺页异常（写入只读页面），do_wp_page 检查页面引用计数是否大于 1——若大于 1，表示页面确实被共享，需要复制。"},
+    {"q": "主缺页异常与次缺页异常有何区别？", "a": "主缺页异常（do_no_page）需要从磁盘读取——可能是可执行文件或按需加载未映射页面。次缺页异常（do_wp_page）仅需在内存中快速复制已存在于 RAM 的页面。主缺页异常由于涉及磁盘 I/O，比次缺页异常慢数百倍。"}
+  ]
+}

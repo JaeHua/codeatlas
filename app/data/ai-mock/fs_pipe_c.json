@@ -1,0 +1,70 @@
+{
+  "filePath": "fs/pipe.c",
+  "summary": "匿名管道实现：父子进程间的单向字节流通信。",
+  "plainExplanation": "sys_pipe() 创建一对文件描述符——一个用于读取，一个用于写入——由内核内存中的共享环形缓冲区支撑。pipe_read() 将数据从缓冲区复制到用户空间，缓冲区空时阻塞（除非 O_NONBLOCK）。pipe_write() 将数据复制到缓冲区，缓冲区满时阻塞。写入者到达数据时唤醒读者，读者释放空间时唤醒写入者。管道是 'ls | grep foo' 等 shell 管线的基础。",
+  "keyFunctions": [
+    {
+      "name": "sys_pipe",
+      "role": "创建管道：分配 inode 和两个文件描述符，通过用户数组返回 fd"
+    },
+    {
+      "name": "pipe_read",
+      "role": "从管道环形缓冲区读取最多 count 字节，空时阻塞"
+    },
+    {
+      "name": "pipe_write",
+      "role": "向管道缓冲区写入最多 count 字节，满时阻塞（PIPE_BUF = 4096）"
+    },
+    {
+      "name": "pipe_ioctl",
+      "role": "返回管道缓冲区当前字节数（FIONREAD）"
+    },
+    {
+      "name": "pipe_select",
+      "role": "轮询管道的可读/可写性，供 select() 系统调用使用"
+    }
+  ],
+  "prerequisites": [
+    "环形缓冲区实现",
+    "file_operations 分发（pipe_read vs generic_read）",
+    "阻塞 vs 非阻塞 I/O",
+    "shell 管线语义"
+  ],
+  "relatedFiles": [
+    {
+      "path": "include/fs.h",
+      "reason": "定义 PIPE_BUF、pipe_inode_info 结构体和管道的 file_operations"
+    },
+    {
+      "path": "fs/open.c",
+      "reason": "sys_read/sys_write 通过 file->f_op->read/write 分发到 pipe_read/pipe_write"
+    },
+    {
+      "path": "fs/inode.c",
+      "reason": "管道 inode 通过 iget/get_pipe_inode 创建，通过 iput 释放"
+    },
+    {
+      "path": "kernel/fork.c",
+      "reason": "fork 后父子进程共享管道 fd 进行进程间通信"
+    },
+    {
+      "path": "fs/namei.c",
+      "reason": "命名管道（FIFO）也使用此代码，通过 mknod 创建并由 namei 解析"
+    }
+  ],
+  "mermaid": "graph TD\n    A[sys_pipe fds[]] --> B[get_pipe_inode - 分配管道 inode]\n    B --> C[通过 get_unused_fd 分配读 fd]\n    C --> D[分配写 fd]\n    D --> E[设置 fds(0) = read_fd, fds(1) = write_fd]\n    E --> F[将两个 file 结构体链接到同一管道 inode]\n    F --> G[返回 0，管道就绪]\n    H[pipe_read buf count] --> I{缓冲区为空？}\n    I -->|是| J{是否 O_NONBLOCK？}\n    J -->|是| K[返回 -EAGAIN]\n    J -->|否| L[sleep_on pip->wait，等待数据]\n    L --> M[被写入唤醒，再次检查]\n    I -->|否| N[从环形缓冲区复制到用户 buf]\n    N --> O[wake_up 唤醒等待空间的可写者]\n    O --> P[返回已读字节数]\n    Q[pipe_write buf count] --> R{缓冲区已满？}\n    R -->|是| S{是否 O_NONBLOCK？}\n    S -->|是| T[返回 -EAGAIN]\n    S -->|否| U[sleep_on pip->wait，等待空间]\n    U --> V[被读取唤醒，再次检查]\n    R -->|否| W[从用户 buf 复制到环形缓冲区]\n    W --> X[wake_up 唤醒等待数据的可读者]\n    X --> Y[返回已写字节数]",
+  "faq": [
+    {
+      "q": "管道的写入端关闭时会发生什么？",
+      "a": "当 pipe_read 检测到没有写入者（写 fd 计数为 0）且缓冲区为空时，返回 0（EOF）。这就是 'cat file | head' 的工作原理：head 关闭其 stdin（读端），cat 在下一次写入时收到 SIGPIPE，管线干净结束。"
+    },
+    {
+      "q": "PIPE_BUF 是什么，为什么重要？",
+      "a": "PIPE_BUF（4096 字节）是最大原子写入大小。不超过 PIPE_BUF 的写入保证不会与其他进程的写入交错。更大的写入可能被分割成块。这对于并发日志记录至关重要，其中每个进程写入的行小于 PIPE_BUF。"
+    },
+    {
+      "q": "环形缓冲区内部如何工作？",
+      "a": "由四个索引管理：实际缓冲区是 pipe->i_data[PIPE_BUF]；pipe->i_head 是写入位置，pipe->i_tail 是读取位置。数据逐字节复制。缓冲区满时 head+1 == tail（模 PIPE_BUF），保留一个空字节以区分满和空。"
+    }
+  ]
+}

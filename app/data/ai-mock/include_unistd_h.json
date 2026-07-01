@@ -1,0 +1,49 @@
+{
+  "filePath": "include/unistd.h",
+  "summary": "系统调用号：定义 __NR_* 常量，将系统调用名称映射到分发表索引。",
+  "plainExplanation": "此头文件定义了 Linux 0.21 中每个系统调用的数值标识符。当用户程序调用 open() 时，libc 将其翻译为 EAX = __NR_open（5）的 int 0x80。汇编入口点 system_call 使用此编号作为 sys_call_table[] 函数指针数组的索引。头文件还声明了 sys_* 函数原型，以便内核代码可以直接调用它们进行内部操作，而不仅仅通过系统调用门。",
+  "keyFunctions": [],
+  "prerequisites": [
+    "int 0x80 系统调用机制",
+    "系统调用表（sys_call_table[]）",
+    "libc 封装函数",
+    "参数传递：EBX、ECX、EDX 寄存器"
+  ],
+  "relatedFiles": [
+    {
+      "path": "kernel/sys.c",
+      "reason": "每个 sys_* 函数（sys_getpid、sys_setup）由其 __NR_ 常量分发"
+    },
+    {
+      "path": "fs/open.c",
+      "reason": "__NR_open、__NR_read、__NR_write、__NR_close 在此定义，在彼实现"
+    },
+    {
+      "path": "kernel/fork.c",
+      "reason": "__NR_fork 和 __NR_vfork"
+    },
+    {
+      "path": "kernel/exit.c",
+      "reason": "__NR_exit 和 __NR_waitpid"
+    },
+    {
+      "path": "kernel/signal.c",
+      "reason": "__NR_signal、__NR_sigaction、__NR_kill"
+    }
+  ],
+  "mermaid": "graph TD\n    A[用户程序：fd = open path flags] --> B[libc：mov EAX __NR_open]\n    B --> C[libc：int 0x80]\n    C --> D[CPU 转换到 ring 0]\n    D --> E[entry.S 中的 system_call 处理程序]\n    E --> F[在栈上保存所有寄存器]\n    F --> G[call sys_call_table(EAX*4)]\n    G --> H[sys_open path flags mode]\n    H --> I[打开文件，返回 fd 或错误]\n    I --> J[恢复寄存器]\n    J --> K[iret - 返回 ring 3]\n    K --> L[libc：检查 EAX 是否有错误，返回给程序]\n    M[sys_call_table(9条)] --> N[0：sys_setup]\n    M --> O[1：sys_exit]\n    M --> P[2：sys_fork]\n    M --> Q[3：sys_read]\n    M --> R[4：sys_write]\n    M --> S[5：sys_open]\n    M --> T[6：sys_close]\n    M --> U[7：sys_waitpid]\n    M --> V[8：sys_creat]\n    M --> W[9：sys_link]\n    M --> X[10：sys_unlink]\n    M --> Y[11：sys_execve]\n    M --> Z[12：sys_chdir]\n    M --> AA[13：sys_time]\n    M --> AB[14：sys_mknod]\n    M --> AC[15：sys_chmod]\n    M --> AD[16：sys_chown]\n    M --> AE[17：sys_break]\n    M --> AF[18：sys_stat]\n    M --> AG[19：sys_lseek]\n    M --> AH[20：sys_getpid]",
+  "faq": [
+    {
+      "q": "为什么需要系统调用号而不是命名函数？",
+      "a": "int 0x80 接口是通用陷阱机制——无法传递函数名。EAX 寄存器携带一个整数索引到 sys_call_table[] 数组中。这是经典的权衡：最小硬件接口（所有系统调用仅一个中断向量），以软件数字分发为代价。简单、快速，易于扩展。"
+    },
+    {
+      "q": "如果用无效的系统调用号调用 int 0x80 会发生什么？",
+      "a": "system_call 处理程序检查 EAX >= NR_syscalls（系统调用总数）。若是，返回 -ENOSYS（功能未实现）。用户程序得到 EAX 设为 -38。这就是新系统调用可以在不破坏旧二进制文件的情况下添加的方式——为新内核编译的程序可以检查 -ENOSYS 并回退到旧接口。"
+    },
+    {
+      "q": "sys_* 函数原型在哪里声明？",
+      "a": "unistd.h 将它们前向声明为 extern int sys_foo(...)，这样内核代码如 init/main.c 可以直接调用 sys_setup()。此头文件被内核代码包含，而非用户空间。用户空间程序包含 libc 的 <unistd.h>，其中包含 POSIX 函数声明（int open(const char *path, int flags, ...)），并使用内联汇编或库存根调用 int 0x80。"
+    }
+  ]
+}

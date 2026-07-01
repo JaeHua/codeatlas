@@ -1,0 +1,20 @@
+{
+  "filePath": "include/sched.h",
+  "summary": "调度器头文件：定义 task_struct、进程状态和内核栈布局。",
+  "plainExplanation": "此头文件是 Linux 进程的中央定义。task_struct（约 1KB）包含内核需要知道的关于任务的一切：状态（TASK_RUNNING/INTERRUPTIBLE/UNINTERRUPTIBLE/ZOMBIE/STOPPED）、PID、父进程指针、调度计数器（counter、priority）、信号位图（signal、blocked）、文件描述符表（filp[NR_OPEN]）、内存布局（LDT 描述符、页目录）、时间戳（utime、stime、start_time）以及用于硬件上下文切换的 TSS。联合体 task_union 将 task_struct 与一页内核栈配对。",
+  "keyFunctions": [],
+  "prerequisites": ["进程状态机", "x86 TSS（任务状态段）", "LDT（局部描述符表）", "内核/用户态栈分离"],
+  "relatedFiles": [
+    {"path": "kernel/sched.c", "reason": "调度器使用 task_struct 字段（state、counter、priority）做出调度决策"},
+    {"path": "kernel/fork.c", "reason": "copy_process 从父进程初始化新的 task_struct"},
+    {"path": "kernel/exit.c", "reason": "do_exit 将状态设为 TASK_ZOMBIE 并存储退出码"},
+    {"path": "kernel/signal.c", "reason": "信号位图和 sigaction 数组位于 task_struct 中"},
+    {"path": "fs/open.c", "reason": "filp[NR_OPEN] 数组持有进程的打开文件描述符"}
+  ],
+  "mermaid": "graph TD\n    A[task_struct] --> B[long state]\n    A --> C[long counter]\n    A --> D[long priority]\n    A --> E[long signal]\n    A --> F[struct sigaction sigaction(32)]\n    A --> G[long blocked]\n    A --> H[int exit_code]\n    A --> I[unsigned long start_code end_code end_data brk start_stack]\n    A --> J[long pid father pgrp session leader]\n    A --> K[unsigned short uid euid suid]\n    A --> L[unsigned short gid egid sgid]\n    A --> M[long alarm]\n    A --> N[long utime stime cutime cstime start_time]\n    A --> O[unsigned short used_math]\n    A --> P[int tty]\n    A --> Q[unsigned short umask]\n    A --> R[struct m_inode *pwd *root *executable]\n    A --> S[struct file *filp(NR_OPEN)]\n    A --> T[struct desc_struct ldt(3)]\n    A --> U[struct tss_struct tss]\n    V[进程状态] --> W[TASK_RUNNING = 0]\n    V --> X[TASK_INTERRUPTIBLE = 1]\n    V --> Y[TASK_UNINTERRUPTIBLE = 2]\n    V --> Z[TASK_ZOMBIE = 3]\n    V --> AA[TASK_STOPPED = 4]",
+  "faq": [
+    {"q": "为什么每个任务有自己的 LDT？", "a": "Linux 0.21 使用 x86 分段机制。每个进程获得 3 个 LDT 条目：代码段（基址 0，limit = text+data 大小）、数据段（相同基址和 limit 但可写）以及用于系统调用的调用门。LDT 确保进程无法访问彼此的内存——即使没有分页，段限长也能强制隔离。"},
+    {"q": "每个进程的 TSS（任务状态段）中包含什么？", "a": "TSS 存储硬件上下文：SS0:ESP0（用于环切换的内核栈指针）、LDT 选择子以及指向前一个任务的反向链接。与后续内核不同，Linux 0.21 使用硬件任务切换（ltr + ljmp）而非软件上下文切换，因此 TSS 在任务不运行时保存完整的寄存器状态（EIP、ESP、EAX、EBX 等）。"},
+    {"q": "counter 和 priority 的用途是什么？", "a": "counter 跟踪当前调度时间片中剩余多少定时器滴答。每次定时器中断将其递减；归零时 schedule() 选择新任务。priority 是补充 counter 时分配的基本时间片。高优先级任务获得更大的 counter 值，从而获得更多 CPU 时间。补充计数器的公式为：counter = counter/2 + priority，这使交互式任务获得优势。"}
+  ]
+}

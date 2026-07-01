@@ -1,0 +1,24 @@
+{
+  "filePath": "lib/vsprintf.c",
+  "summary": "格式化字符串引擎：实现 vsprintf，即 printk 和 sprintf 的内核 printf 后端。",
+  "plainExplanation": "vsprintf() 是内核格式化字符串的主力函数。它处理包含 %d（有符号整数）、%u（无符号）、%x（十六进制）、%s（字符串）、%c（字符）和 %%（字面百分号）的格式字符串。与用户态不同，它还支持内核特有功能，如 %p 打印指针地址和 %o 八进制。它使用简单的状态机解析格式说明符，并调用 number() 进行数值转换（十进制、十六进制、八进制，支持宽度和填充）。printk() 是一个薄封装，调用 vsprintf() 到静态缓冲区并输出到控制台。",
+  "keyFunctions": [
+    {"name": "vsprintf", "role": "核心格式化输出：解析格式字符串并用结果填充字符缓冲区"},
+    {"name": "printk", "role": "内核 printf：格式化消息，输出到控制台，遵循日志级别前缀"},
+    {"name": "number", "role": "将整数转换为任意进制（2-36）的字符串表示，支持宽度和填充"},
+    {"name": "skip_atoi", "role": "从字符串指针解析整数，将指针移动过数字"},
+    {"name": "sprintf", "role": "向缓冲区发送格式化输出（vsprintf 的可用户态访问封装）"}
+  ],
+  "prerequisites": ["格式说明符语法（%d、%x、%s、%c）", "整数到 ASCII 转换", "内核日志级别（KERN_ERR、KERN_WARNING）", "printk 的静态内核缓冲区"],
+  "relatedFiles": [
+    {"path": "drivers/console.c", "reason": "printk 调用 con_write 在控制台屏幕上显示消息"},
+    {"path": "kernel/sched.c", "reason": "schedule 和其他内核代码使用 printk 进行调试/日志消息"},
+    {"path": "include/stddef.h", "reason": "定义 NULL 和 vsprintf 使用的其他标准定义"}
+  ],
+  "mermaid": "graph TD\n    A[printk fmt args...] --> B[vsprintf printk_buf fmt args]\n    B --> C[循环遍历格式字符串字符]\n    C --> D{字符 == '%'？}\n    D -->|否| E[将字符复制到输出缓冲区]\n    E --> C\n    D -->|是| F[解析格式说明符]\n    F --> G{说明符类型？}\n    G -->|d/i| H[number 以 base 10 有符号]\n    G -->|u| I[number 以 base 10 无符号]\n    G -->|x/X| J[number 以 base 16]\n    G -->|o| K[number 以 base 8]\n    G -->|s| L[将字符串参数复制到输出]\n    G -->|c| M[将单个字符复制到输出]\n    G -->|p| N[将指针输出为十六进制]\n    G -->|%%| O[复制字面量 '%']\n    H --> P[添加空终止符]\n    I --> P\n    J --> P\n    K --> P\n    L --> P\n    M --> P\n    N --> P\n    O --> P\n    P --> Q[con_write printk_buf 到控制台]\n    Q --> R[返回字符计数]\n    S[number str base size precision type] --> T{符号处理？}\n    T -->|有符号且为负| U[写入 '-' 号，取反值]\n    T -->|无符号或正数| V[确定填充：零或空格]\n    U --> V\n    V --> W[转换数字：while(val){*--str='0'+val%base; val/=base}]\n    W --> X[应用宽度：用填充字符向左填充]\n    X --> Y[返回指针（指向格式化数字之后）]",
+  "faq": [
+    {"q": "为什么内核有自己的 printf 而不用 libc？", "a": "内核独立运行——没有 libc。它必须实现自己的最小标准库函数。vsprintf 自包含（无 malloc、无 FILE*），使用固定大小的静态缓冲区，并避免浮点。它还需要在控制台完全初始化之前就能工作，以输出早期引导消息。"},
+    {"q": "内核日志级别（KERN_ERR、KERN_WARNING）是什么？", "a": "printk 用 <N> 为消息加前缀，其中 N 是日志级别（0=KERN_EMERG、7=KERN_DEBUG）。控制台仅显示高于可配置阈值（console_loglevel）的消息。这防止调试消息淹没屏幕，同时保留关键错误消息。前缀是一个整数字符串，在调用 vsprintf 之前由早期 printk 解析。"},
+    {"q": "number() 如何处理前导零和空格？", "a": "type 参数编码填充方式：LEFT（1）表示左对齐，ZEROPAD（2）表示零填充，SIGN（4）表示始终显示 +/-。%04x 设置 ZEROPAD 和 width=4，将 '0x1a' 打印为 '001a'。%-8s 设置 LEFT 和 width=8，将 'foo' 打印为 'foo     '。循环从最右位向后填充到临时缓冲区，然后复制到输出。"}
+  ]
+}

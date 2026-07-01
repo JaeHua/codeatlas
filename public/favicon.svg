@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <path d="M30 120 C 60 90, 80 130, 100 100 C 120 70, 140 100, 170 60" stroke="url(#ga)" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="100" cy="100" r="14" fill="#f59e0b"/>
+  <circle cx="100" cy="100" r="24" stroke="#f59e0b" stroke-width="2.5" opacity="0.4"/>
+  <circle cx="100" cy="52" r="11" fill="#fb7185"/>
+  <circle cx="48" cy="112" r="11" fill="#fb7185"/>
+  <circle cx="152" cy="88" r="11" fill="#fb7185"/>
+  <line x1="100" y1="86" x2="100" y2="63" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 4"/>
+  <defs>
+    <linearGradient id="ga" x1="30" y1="100" x2="170" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="60%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,28 @@
+{
+  "filePath": "fs/buffer.c",
+  "summary": "缓冲区缓存：使用哈希表和 LRU 淘汰策略在内存中缓存磁盘块。",
+  "plainExplanation": "缓冲区缓存位于文件系统和块设备驱动之间。bread()（块读取）通过设备号加块号在哈希表中查找——若找到则返回缓存缓冲区；若未找到则分配新缓冲区，从磁盘读取并缓存。brelse() 递减使用计数。getblk() 是核心查找或分配函数，找到现有缓冲区或回收最近最少使用的空闲缓冲区。buffer_head 结构体跟踪缓冲区是否脏、锁定或有效。",
+  "keyFunctions": [
+    {"name": "bread", "role": "读取磁盘块：在缓冲区缓存中查找或加载，返回锁定的 buffer_head"},
+    {"name": "brelse", "role": "释放 buffer_head，递减其引用计数"},
+    {"name": "getblk", "role": "在哈希表中查找缓冲区或分配空闲缓冲区，必要时 LRU 回收"},
+    {"name": "get_hash_table", "role": "按设备和块号在哈希表中查找缓冲区"},
+    {"name": "bwrite", "role": "通过调用 ll_rw_block 将脏缓冲区写回磁盘"},
+    {"name": "ll_rw_block", "role": "向块设备驱动的请求队列提交读/写请求"},
+    {"name": "buffer_init", "role": "初始化缓冲区缓存：从内核内存中分配 buffer_head 和数据缓冲区"},
+    {"name": "sync_buffers", "role": "将所有脏缓冲区写入磁盘，由 sync() 系统调用调用"}
+  ],
+  "prerequisites": ["块设备驱动接口", "哈希表冲突处理（双重哈希）", "LRU 淘汰策略", "buffer_head 结构体（b_dev、b_blocknr、b_data、b_count）"],
+  "relatedFiles": [
+    {"path": "include/fs.h", "reason": "定义 struct buffer_head 和缓冲区缓存哈希表常量"},
+    {"path": "fs/open.c", "reason": "sys_read/sys_write 通过缓冲区缓存使用 bread/bwrite 访问文件数据"},
+    {"path": "drivers/hd.c", "reason": "ll_rw_block 通过 do_hd_request 向硬盘驱动提交请求"},
+    {"path": "fs/inode.c", "reason": "inode 读取（iget）使用 bread 从块设备加载磁盘上的 inode 数据"}
+  ],
+  "mermaid": "graph TD\n    A[getblk dev block] --> B[get_hash_table dev block]\n    B --> C{在哈希表中找到？}\n    C -->|是| D[递增 b_count]\n    D --> E{缓冲区是否脏？}\n    E -->|是| F[等待缓冲区写入完成]\n    E -->|否| G[返回 buffer_head]\n    F --> G\n    C -->|否| H[在 free_list 中查找空闲缓冲区]\n    H --> I{找到空闲缓冲区？}\n    I -->|是| J[回收：从旧哈希表移除]\n    I -->|否| K[在 buffer_wait 上睡眠 - 无空闲缓冲区]\n    K --> H\n    J --> L[设置 b_dev 和 b_blocknr]\n    L --> M[插入哈希表]\n    M --> N[标记缓冲区无效、不脏]\n    N --> O[返回回收的 buffer_head]\n    P[bread dev block] --> Q[getblk dev block]\n    Q --> R{缓冲区已有效？}\n    R -->|是| S[返回缓冲区]\n    R -->|否| T[ll_rw_block READ 到缓冲区]\n    T --> U[等待 I/O 完成]\n    U --> S\n    V[brelse] --> W[递减 b_count]\n    W --> X{b_count == 0?}\n    X -->|是| Y[移到 free_list 末尾]\n    X -->|否| Z[仍在使用，不回收]",
+  "faq": [
+    {"q": "为什么缓冲区缓存与页面缓存是分开的？", "a": "在 Linux 0.21 中，尚未有页面缓存——缓冲区缓存是唯一的磁盘缓存。所有文件数据都经过缓冲区。后续内核（0.95+）为支持 mmap 引入了页面缓存，但对于文件系统元数据和块设备访问仍保留缓冲区缓存。"},
+    {"q": "bh->b_lock 中的锁定是什么意思？", "a": "锁定的缓冲区正在进行 I/O。锁定期间，其他任何人都不能读写它。bread() 返回一个锁定的缓冲区；调用者必须等待 I/O 完成。使用完毕后，brelse() 不进行锁定——仅减少引用计数。I/O 完成时缓冲区解锁。"},
+    {"q": "getblk 中的 LRU 回收如何工作？", "a": "free_list 是一个按最后使用时间排序的双向链表。当 getblk 需要空闲缓冲区但找不到时，从链表头部（最久未使用）开始扫描，跳过锁定或引用计数非零的缓冲区。第一个符合条件的缓冲区被回收：清除旧的设备/块关联，更新哈希表条目，赋予新的身份。"}
+  ]
+}

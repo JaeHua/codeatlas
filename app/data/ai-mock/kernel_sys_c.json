@@ -1,0 +1,29 @@
+{
+  "filePath": "kernel/sys.c",
+  "summary": "杂项系统调用，包括主机名、时间、资源限制以及 sys_setup 初始化。",
+  "plainExplanation": "该文件汇集了不适合归入其他子系统的实用系统调用。sys_setup() 从引导扇区参数中初始化根文件系统和交换设备。sys_getpid() 系列返回进程身份信息。sys_times() 报告 CPU 使用情况，sys_umask() 设置文件创建掩码。还包括 sysinfo、setregid/setreuid 和 sethostname 等调用。",
+  "keyFunctions": [
+    {"name": "sys_setup", "role": "从引导扇区分区信息中挂载根文件系统并启用交换空间"},
+    {"name": "sys_getpid", "role": "返回 current->pid，即调用进程的进程 ID"},
+    {"name": "sys_getppid", "role": "返回父进程 ID"},
+    {"name": "sys_getuid", "role": "返回调用进程的真实用户 ID"},
+    {"name": "sys_setuid", "role": "设置有效和真实用户 ID；root 可设置任意值，其他人只能设为自己的 UID"},
+    {"name": "sys_times", "role": "用进程的用户和系统 CPU 时间填充 tms 结构体"},
+    {"name": "sys_sethostname", "role": "设置系统主机名字符串（需要超级用户权限）"},
+    {"name": "sys_umask", "role": "设置进程的文件模式创建掩码并返回旧值"}
+  ],
+  "prerequisites": ["用户/组 ID 模型（真实 vs 有效）", "引导扇区分区表格式", "超级块与挂载概念", "资源限制"],
+  "relatedFiles": [
+    {"path": "include/unistd.h", "reason": "定义 __NR_getpid、__NR_setuid 及所有系统调用号"},
+    {"path": "kernel/sched.c", "reason": "sys_times 读取 current->utime 和 stime 计数字段"},
+    {"path": "fs/super.c", "reason": "sys_setup 调用 mount_root 挂载根文件系统"},
+    {"path": "mm/swap.c", "reason": "sys_setup 在配置的交换分区上启用交换"},
+    {"path": "init/main.c", "reason": "main() 在引导初始化期间调用 sys_setup"}
+  ],
+  "mermaid": "graph TD\n    A[main 引导序列] --> B[sys_setup]\n    B --> C[读取引导扇区分区信息]\n    C --> D[从 ROOT_DEV 识别根设备]\n    D --> E[从 SWAP_DEV 识别交换设备]\n    E --> F[在根设备上 mount_root]\n    F --> G[若存在 ramdisk 则 rd_load]\n    G --> H[在交换设备上启用交换]\n    H --> I[返回，引导继续]\n    J[sys_getpid] --> K[返回 current->pid]\n    L[sys_setuid] --> M{调用者为 root 或 uid == current->uid?}\n    M -->|是| N[设置 ruid 和 euid]\n    M -->|否| O[返回 -EPERM]",
+  "faq": [
+    {"q": "ruid 和 euid 有何区别？", "a": "ruid（真实 UID）标识你的真实身份。euid（有效 UID）决定文件访问等操作的权限检查。setuid 程序的 euid != ruid——它以文件所有者的权限运行。sys_setuid(root) 可同时设置两者；非 root 用户只能将 euid 设为 ruid。"},
+    {"q": "为什么 sys_setup 在 sys.c 中而非 init/main.c 中？", "a": "历史布局：早期 Linux 将引导时的初始化作为系统调用，使其也能从用户态 init 调用。实践中，main() 直接通过 C 函数调用它。它读取由引导加载器传入的引导扇区分区表，以定位根设备和交换设备。"},
+    {"q": "sys_times 报告什么内容？", "a": "它填充 struct tms，包含 tms_utime（用户态 CPU 滴答）、tms_stime（系统态 CPU 滴答）、tms_cutime（子进程用户滴答）和 tms_cstime（子进程系统滴答）。内核在 current->utime 和 current->stime 中跟踪这些值，由定时器中断处理函数递增。"}
+  ]
+}

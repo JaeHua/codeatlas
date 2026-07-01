@@ -1,0 +1,16 @@
+[
+  { "struct": "task_struct", "uses": "mm_struct", "relation": "pointer" },
+  { "struct": "task_struct", "uses": "file_struct", "relation": "pointer" },
+  { "struct": "task_struct", "uses": "tss_struct", "relation": "nested" },
+  { "struct": "task_struct", "uses": "task_struct", "relation": "pointer" },
+  { "struct": "inode", "uses": "super_block", "relation": "pointer" },
+  { "struct": "inode", "uses": "file_operations", "relation": "pointer" },
+  { "struct": "file", "uses": "inode", "relation": "pointer" },
+  { "struct": "file", "uses": "file_operations", "relation": "pointer" },
+  { "struct": "super_block", "uses": "inode", "relation": "pointer" },
+  { "struct": "super_block", "uses": "buffer_head", "relation": "pointer" },
+  { "struct": "buffer_head", "uses": "buffer_head", "relation": "pointer" },
+  { "struct": "tty_struct", "uses": "task_struct", "relation": "pointer" },
+  { "struct": "swap_map", "uses": "task_struct", "relation": "pointer" },
+  { "struct": "file_operations", "uses": "inode", "relation": "pointer" }
+]

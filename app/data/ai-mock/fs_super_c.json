@@ -1,0 +1,27 @@
+{
+  "filePath": "fs/super.c",
+  "summary": "超级块管理：挂载根文件系统并管理文件系统级元数据。",
+  "plainExplanation": "超级块是文件系统的锚点：包含文件系统类型、块大小、inode/块总数以及空闲块/inode 位图的指针。mount_root() 在引导时读取根设备的超级块，验证文件系统魔数，将根 inode 加载到内存中，并将 current->root 和 current->pwd 指向它。其他函数处理读取超级块、将块和 inode 归还位图，以及管理已挂载文件系统列表。",
+  "keyFunctions": [
+    {"name": "mount_root", "role": "挂载根文件系统：读取超级块，验证它，加载根 inode"},
+    {"name": "read_super", "role": "从设备读取超级块，初始化 super_block 结构体"},
+    {"name": "free_block", "role": "将数据块归还磁盘上文件系统的空闲块位图"},
+    {"name": "free_inode", "role": "将 inode 归还磁盘上文件系统的空闲 inode 位图"},
+    {"name": "new_block", "role": "从空闲块位图中分配新数据块，返回其块号"},
+    {"name": "new_inode", "role": "从空闲 inode 位图中分配新 inode，返回其 inode 编号"}
+  ],
+  "prerequisites": ["Minix 文件系统布局（超级块、inode/块位图、数据区）", "引导序列与根设备检测", "挂载点语义"],
+  "relatedFiles": [
+    {"path": "include/fs.h", "reason": "定义 struct super_block，包含 s_ninodes、s_nzones、s_imap、s_zmap"},
+    {"path": "fs/inode.c", "reason": "new_inode 调用 iget 加载新分配的 inode；iput 释放 inode"},
+    {"path": "fs/buffer.c", "reason": "超级块的读写使用 bread/bwrite 访问磁盘上的超级块"},
+    {"path": "kernel/sys.c", "reason": "sys_setup 确定根设备并调用 mount_root"},
+    {"path": "init/main.c", "reason": "main() 在内核初始化期间调用 mount_root"}
+  ],
+  "mermaid": "graph TD\n    A[mount_root] --> B[read_super ROOT_DEV]\n    B --> C[bread 块 1 - 超级块所在块]\n    C --> D{检查 s_magic == SUPER_MAGIC？}\n    D -->|否| E[Panic - 无效的文件系统]\n    D -->|是| F[设置块大小、空闲图大小]\n    F --> G[从磁盘读取 inode 位图]\n    G --> H[从磁盘读取块位图]\n    H --> I[iget ROOT_INO - 加载根 inode]\n    I --> J[设置根 inode 的 i_mount 标志]\n    J --> K[设置 current->root = 根 inode]\n    K --> L[设置 current->pwd = 根 inode]\n    L --> M[根文件系统已挂载]\n    N[new_block dev] --> O[扫描块位图寻找空闲位]\n    O --> P{找到空闲块？}\n    P -->|否| Q[返回 0 - 空间已满]\n    P -->|是| R[将位图位设为 1]\n    R --> S[将位图块写入磁盘]\n    S --> T[返回块号]\n    U[free_block dev block] --> V[将块位图中对应位清零]\n    V --> W[将位图块写入磁盘]\n    W --> X[返回]",
+  "faq": [
+    {"q": "SUPER_MAGIC 是什么，为什么要检查它？", "a": "SUPER_MAGIC（0x137f）是存储在 Minix 文件系统超级块偏移 16 处的常量。当 mount_root 读取超级块时，检查此魔数以验证设备确实包含有效的 Minix 文件系统。若不匹配，内核 panic——没有根文件系统无法继续运行。"},
+    {"q": "块和 inode 位图如何工作？", "a": "Minix 文件系统在超级块之后有两个位图：inode 位图和块（zone）位图。每一位代表一个 inode 或数据块——0 表示空闲，1 表示使用中。new_block 扫描位图寻找第一个 0 位，设置它，并将位图块写回磁盘。位图在挂载时加载到缓冲区缓存中。"},
+    {"q": "Linux 0.21 能处理多个已挂载文件系统吗？", "a": "框架存在（super_block 数组有多个槽位），但实践中 Linux 0.21 仅在引导时挂载根文件系统。还没有 sys_mount 系统调用。mount_root 函数设计得足够通用，一旦添加挂载支持就可以被多次调用。"}
+  ]
+}

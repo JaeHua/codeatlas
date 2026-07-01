@@ -1,0 +1,29 @@
+{
+  "filePath": "fs/inode.c",
+  "summary": "Inode 缓存：在内存中加载、缓存和管理文件系统 inode 结构体。",
+  "plainExplanation": "iget() 是核心函数，返回给定设备和 inode 编号的内存 inode 指针。它首先检查 inode 哈希表——若找到则递增引用计数并返回。若不在缓存中，分配一个空的 inode 槽位，通过 bread() 读取磁盘上的 inode 数据，并填充各字段（i_mode、i_size、i_blocks 等）。iput() 递减引用计数，在最后一个引用被释放时将脏 inode 写回磁盘。write_inode 函数在元数据变化时更新磁盘上的副本。",
+  "keyFunctions": [
+    {"name": "iget", "role": "查找或从磁盘加载 inode，递增引用计数，返回 inode 指针"},
+    {"name": "iput", "role": "递减 inode 引用计数；计数为零时将脏 inode 写入磁盘"},
+    {"name": "read_inode", "role": "读取磁盘上的原始 inode 数据并填充 VFS inode 结构体字段"},
+    {"name": "write_inode", "role": "将内存 inode 字段写回块设备上磁盘 inode 中"},
+    {"name": "get_empty_inode", "role": "从内存 inode 表中分配一个空闲 inode 槽位"},
+    {"name": "clear_inode", "role": "将 inode 重置为空闲状态，供不同文件重用"},
+    {"name": "bmap", "role": "使用 inode 块指针将逻辑文件块号映射到物理磁盘块号"},
+    {"name": "sync_inodes", "role": "将所有脏 inode 写入磁盘，由 sync() 和卸载时调用"}
+  ],
+  "prerequisites": ["磁盘 inode 结构（d_inode）", "直接/间接块指针", "inode 引用计数", "VFS 层抽象"],
+  "relatedFiles": [
+    {"path": "include/fs.h", "reason": "定义 struct m_inode（VFS inode）和 struct d_inode（磁盘 inode）"},
+    {"path": "fs/namei.c", "reason": "namei 使用 iget 将路径解析为 inode；用 iput 释放"},
+    {"path": "fs/buffer.c", "reason": "iget 使用 bread 从缓冲区缓存读取 inode 块"},
+    {"path": "fs/super.c", "reason": "超级块通过 iget 指向已加载的根 inode"},
+    {"path": "fs/open.c", "reason": "打开文件递增 inode 引用计数；关闭通过 iput 递减"}
+  ],
+  "mermaid": "graph TD\n    A[iget dev nr] --> B[检查 inode 哈希表]\n    B --> C{inode 在缓存中？}\n    C -->|是| D[递增 i_count]\n    D --> E{是否为挂载点？}\n    E -->|是| F[调整为挂载的根 inode]\n    E -->|否| G[返回 inode]\n    F --> G\n    C -->|否| H[get_empty_inode - 查找空闲槽位]\n    H --> I{有空闲槽位？}\n    I -->|否| J[打印错误，返回 NULL]\n    I -->|是| K[设置 i_dev 和 i_ino]\n    K --> L[read_inode - 通过 bread 从磁盘加载]\n    L --> M[填充 i_mode、i_size、i_uid、i_gid、i_blocks]\n    M --> N[插入哈希表]\n    N --> G\n    O[iput inode] --> P[递减 i_count]\n    P --> Q{i_count == 0？}\n    Q -->|否| R[完成，仍有引用]\n    Q -->|是| S{inode 脏？}\n    S -->|是| T[write_inode - 刷新到磁盘]\n    S -->|否| U{管道 inode？}\n    U -->|是| V[释放管道缓冲区]\n    U -->|否| W{inode->i_nlinks == 0？}\n    W -->|是| X[通过 free_page 释放所有块]\n    W -->|否| Y[clear_inode - 标记槽位空闲]",
+  "faq": [
+    {"q": "inode 编号和磁盘块有什么区别？", "a": "inode 编号索引磁盘上的 inode 表（例如 inode 42 是第 43 个条目）。磁盘块是一个 1KB 的数据块。inode 结构体包含一个块指针数组（i_zone[9]），将逻辑文件偏移量映射到物理磁盘块。前 7 个是直接指针，第 8 个是单间接，第 9 个是双间接。"},
+    {"q": "i_nlinks 变为 0 时会发生什么？", "a": "当文件被解除链接（sys_unlink）时，i_nlinks 递减。当它变为 0 且最后一次 iput() 发生时，内核释放所有数据块和磁盘上的 inode。但是，如果文件仍处于打开状态（i_count > 0），inode 保留在内存中——文件已从命名空间中删除，但其数据持续存在直到最后一次关闭。"},
+    {"q": "为什么 iput 要将 inode 写回磁盘？", "a": "inode 元数据（大小、时间戳、块指针）可以在内存中被修改（例如文件大小随写入增长）。内核必须在重用内存槽位之前将这些更改刷新到磁盘 inode。write_inode() 在 inode 的磁盘块上调用 bread()，用 memcpy 复制 struct d_inode 字段，将缓冲区标记为脏，然后 brelse()——实际的写入发生在后续的 sync 或缓冲区淘汰时。"}
+  ]
+}

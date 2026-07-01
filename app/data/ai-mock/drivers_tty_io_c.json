@@ -1,0 +1,27 @@
+{
+  "filePath": "drivers/tty_io.c",
+  "summary": "TTY 驱动：行规程、规范模式处理和终端读写。",
+  "plainExplanation": "这是终端接口层。tty_read() 处理从终端读取：在规范模式下（默认），缓冲输入直到收到换行符，在内核中处理退格和行编辑。tty_write() 将输出写入终端，调用控制台驱动的 con_write() 显示。行规程处理特殊字符（^C 代表 SIGINT、^Z 代表 SIGTSTP、^\\ 代表 SIGQUIT），为交互式程序提供成熟的/缓冲的读取语义。",
+  "keyFunctions": [
+    {"name": "tty_read", "role": "从终端读取：规范模式缓冲整行；原始模式立即返回"},
+    {"name": "tty_write", "role": "通过控制台驱动将输出写入终端；处理换行的 CR/LF 转换"},
+    {"name": "copy_to_cooked", "role": "通过行规程处理原始输入：回显、擦除、删行、中断检查"},
+    {"name": "tty_init", "role": "初始化 TTY 子系统：打开 /dev/tty0，设置控制台为默认终端"},
+    {"name": "do_tty_interrupt", "role": "处理键盘中断：读取扫描码，转换为 ASCII，放入 tty 缓冲区"},
+    {"name": "rs_write", "role": "串行端口输出例程，支持串行控制台"}
+  ],
+  "prerequisites": ["行规程状态机", "规范模式 vs 原始终端模式", "termios 结构体（c_lflag ICANON、ECHO）", "键盘扫描码转换"],
+  "relatedFiles": [
+    {"path": "include/linux/tty.h", "reason": "定义 struct tty_struct，包含缓冲区、termios 和进程组字段"},
+    {"path": "drivers/console.c", "reason": "con_write 在屏幕上显示字符；con_init 设置显示"},
+    {"path": "drivers/keyboard.S", "reason": "汇编扫描码处理函数：从键盘端口读取，调用 do_tty_interrupt"},
+    {"path": "kernel/signal.c", "reason": "TTY 向前台进程组发送 SIGINT/SIGQUIT/SIGTSTP"},
+    {"path": "init/main.c", "reason": "main 在引导时调用 tty_init 设置控制台终端"}
+  ],
+  "mermaid": "graph TD\n    A[tty_read channel buf count] --> B[查找对应 channel 的 tty_struct]\n    B --> C{规范模式？（ICANON）}\n    C -->|是| D{二级缓冲区中有完整行？}\n    D -->|否| E[sleep_on tty->secondary_wait]\n    E --> F[被键盘中断或超时唤醒]\n    F --> D\n    D -->|是| G[从二级缓冲区复制行到用户 buf]\n    G --> H[移动缓冲区指针]\n    H --> I{请求更多数据？}\n    I -->|是| J[唤醒写入者，返回已读字节数]\n    C -->|否 - 原始模式| K{队列中有数据？}\n    K -->|否| L[sleep 在等待队列上]\n    L --> K\n    K -->|是| M[复制原始数据到用户 buf]\n    M --> J\n    N[tty_write channel buf count] --> O[查找 tty_struct]\n    O --> P[对每个字符：]\n    P --> Q{是换行符？（OPOST 启用）}\n    Q -->|是| R[con_write CR 然后 LF]\n    Q -->|否| S[con_write 字符]\n    R --> T[更新写队列]\n    S --> T\n    T --> U{还有字符？}\n    U -->|是| P\n    U -->|否| V[唤醒读者，返回计数值]",
+  "faq": [
+    {"q": "规范模式和原始模式有什么区别？", "a": "规范模式（cooked）缓冲输入直到按下 Enter，提供行编辑功能（退格、^U 删行、^W 删词）。原始模式将每次击键立即传递给读取者。vi 等程序使用原始模式进行实时按键处理；shell 使用规范模式进行命令行编辑。"},
+    {"q": "TTY 如何产生信号？", "a": "当内核收到键盘中断字符（^C = 0x03、^\\ = 0x1C、^Z = 0x1A）时，copy_to_cooked 检查 ISIG 标志。若设置，调用 kill_pg(tty->pgrp, signal_number) 向前台进程组发送对应信号。这就是按下 Ctrl-C 中断运行中程序的原理。"},
+    {"q": "二级队列和读取队列是什么？", "a": "TTY 有原始输入队列（由键盘中断处理函数填充）、二级队列（保存处理后的成熟行数据）和写入队列（等待显示的输出）。copy_to_cooked 将数据从原始队列移动到二级队列，创建带有回显的规范行。tty_read 将二级队列中的数据排入用户空间。"}
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "filePath": "init/main.c",
+  "summary": "内核入口点：初始化硬件，挂载根文件系统，启动第一个用户进程（init）。",
+  "plainExplanation": "main() 是汇编级引导设置后调用的第一个 C 函数。它初始化内存边界、控制台（con_init）、时间（time_init）、TTY 子系统（tty_init）、硬盘驱动（hd_init）、缓冲区缓存，并挂载根文件系统。然后通过 fork 创建任务 1（init），init 打开 /dev/tty0 作为 stdin/stdout/stderr，启动 shell，并循环 waitpid 回收孤儿进程。原始任务 0 成为空闲任务，仅在没有其他可运行任务时运行。",
+  "keyFunctions": [
+    {"name": "main", "role": "内核入口点：初始化各子系统，挂载根文件系统，启动 init 进程"},
+    {"name": "init", "role": "第一个用户态进程：打开控制台，fork 出 shell，回收孤儿进程"},
+    {"name": "time_init", "role": "编程 8253 PIT 产生 100Hz 定时器中断并设置定时器处理函数"},
+    {"name": "tty_init", "role": "初始化 TTY/控制台驱动并打开 /dev/tty0 作为 init 的控制终端"},
+    {"name": "hd_init", "role": "探测硬盘控制器，读取分区表，设置块设备"},
+    {"name": "con_init", "role": "检测显示适配器（MDA/CGA/EGA/VGA）并初始化控制台滚动和光标"},
+    {"name": "sched_init", "role": "初始化调度器：在 GDT 中设置任务 0 的 TSS 和 LDT 描述符"}
+  ],
+  "prerequisites": ["引导序列（bootsect.S、setup.S、head.S）", "8253 PIT 和 8259 PIC 编程", "内核系统调用门设置", "init 进程职责"],
+  "relatedFiles": [
+    {"path": "kernel/sched.c", "reason": "main 初始化调度器和任务 0，之后 schedule 运行空闲循环"},
+    {"path": "kernel/fork.c", "reason": "main 调用 fork 创建 init（任务 1），第一个用户态进程"},
+    {"path": "fs/super.c", "reason": "mount_root 在引导期间被调用以挂载根文件系统"},
+    {"path": "drivers/console.c", "reason": "con_init 初始化控制台显示驱动"},
+    {"path": "drivers/tty_io.c", "reason": "tty_init 设置 TTY 子系统和行规程"},
+    {"path": "drivers/hd.c", "reason": "hd_init 探测并初始化硬盘控制器"}
+  ],
+  "mermaid": "graph TD\n    A[main - 内核入口] --> B[解析引导参数：memory_end、ROOT_DEV]\n    B --> C[mem_init - 设置物理内存映射]\n    C --> D[trap_init - 设置中断门]\n    D --> E[blk_dev_init - 块设备子系统]\n    E --> F[chr_dev_init - 字符设备子系统]\n    F --> G[tty_init - TTY 层]\n    G --> H[con_init - 控制台显示]\n    H --> I[time_init - PIT 定时器、jiffies]\n    I --> J[sched_init - 任务 0 TSS、调度器]\n    J --> K[buffer_init - 缓冲区缓存]\n    K --> L[hd_init - 硬盘驱动]\n    L --> M[sys_setup - 确定根设备、启用交换]\n    M --> N[mount_root - 挂载根文件系统]\n    N --> O[move_to_user_mode - 切换任务 0 到 ring 3]\n    O --> P[fork 任务 1 - init 进程]\n    P --> Q{任务 0（空闲）或任务 1（init）？}\n    Q -->|任务 1| R[init：打开 /dev/tty0 作为 stdin/stdout/stderr]\n    R --> S[fork 出一个 shell 进程]\n    S --> T[无限循环：waitpid(-1) 回收孤儿]\n    T --> U[子进程退出后，再次 fork]\n    U --> T\n    Q -->|任务 0| V[空闲：无限循环，需要时 schedule]\n    V --> W[CPU 暂停等待中断]",
+  "faq": [
+    {"q": "为什么任务 0 成为空闲任务？", "a": "挂载根文件系统后，main() 调用 move_to_user_mode() 将任务 0 切换到 ring 3，然后 fork() 创建任务 1（init）。fork 的父进程分支成为空闲任务——它运行一个调用 pause() 或 hlt 的无限循环，仅在没有其他可运行任务时消耗 CPU。这很高效，因为 CPU 暂停直到下一次中断。"},
+    {"q": "如果 init 退出会怎样？", "a": "内核进入 panic 状态：'Kernel panic: Trying to free up swapper memory space' 或类似消息。init 绝对不能退出——它是进程回收者和会话首进程。如果 init 死亡，孤儿僵尸进程永远无法被回收，系统变得不可用。现代 Linux 内核明确杀死所有进程并在 init 退出时 panic。"},
+    {"q": "内核如何知道根设备是什么？", "a": "根设备通过引导扇区分区表或引导参数传递。早期 Linux 中它是硬编码的（例如 ROOT_DEV = 0x306 表示 /dev/hda6）。引导加载器（LILO）也可以在内核映像的 root_dev 字段中设置根设备。sys_setup 读取此信息并存储以供 mount_root 使用。"}
+  ]
+}

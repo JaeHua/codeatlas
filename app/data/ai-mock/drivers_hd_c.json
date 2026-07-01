@@ -1,0 +1,27 @@
+{
+  "filePath": "drivers/hd.c",
+  "summary": "硬盘驱动：通过请求队列和中断处理程序处理 IDE/ATA 磁盘 I/O 请求。",
+  "plainExplanation": "此驱动与 IDE（ATA）硬盘控制器接口。hd_init() 探测控制器存在并读取分区表以发现 /dev/hda1、/dev/hda2 等。do_hd_request() 从块设备请求队列中取出下一个请求，用扇区地址（CHS 柱面/磁头/扇区寻址）和命令（读/写）编程控制器，并等待完成。中断处理程序（hd_interrupt）在控制器完成时触发，然后调用 end_request 或启动下一个排队请求。",
+  "keyFunctions": [
+    {"name": "hd_init", "role": "探测 IDE 控制器端口，检测驱动器几何参数，读取分区表"},
+    {"name": "do_hd_request", "role": "用 CHS 地址和读/写命令编程 IDE 控制器以处理下一个排队请求"},
+    {"name": "hd_out", "role": "向 IDE 控制器寄存器输出命令字节序列（扇区计数、LBA、命令）"},
+    {"name": "ll_rw_block", "role": "通用块 I/O 提交：创建请求并将其添加到设备的请求队列"},
+    {"name": "add_request", "role": "将块请求插入排序的请求队列以进行电梯排序 I/O"},
+    {"name": "read_intr", "role": "读完成中断处理程序：从控制器复制数据到缓冲区并标记请求完成"},
+    {"name": "write_intr", "role": "写完成中断处理程序：启动下一个扇区写入或标记请求完成"}
+  ],
+  "prerequisites": ["IDE/ATA 控制器寄存器（0x1F0-0x1F7）", "CHS 寻址（柱面/磁头/扇区）", "块设备请求队列", "8259 PIC 中断路由（IRQ 14 用于主 IDE）"],
+  "relatedFiles": [
+    {"path": "fs/buffer.c", "reason": "块层中的 ll_rw_block 向 HD 驱动提交缓冲区缓存 I/O 请求"},
+    {"path": "include/linux/hdreg.h", "reason": "定义 IDE 控制器寄存器偏移和命令常量（WIN_READ、WIN_WRITE）"},
+    {"path": "init/main.c", "reason": "hd_init 在内核初始化期间从 main() 被调用"},
+    {"path": "kernel/blk_drv/ll_rw_blk.c", "reason": "块 I/O 层：创建 request 结构体并在相应设备上调用 do_hd_request"}
+  ],
+  "mermaid": "graph TD\n    A[ll_rw_block rw dev bhnr] --> B[创建 request 结构体]\n    B --> C[add_request - 插入排序队列]\n    C --> D{控制器空闲？}\n    D -->|是| E[do_hd_request]\n    D -->|否| F[等待 - 请求将由 hd_interrupt 启动]\n    E --> G[从队列获取下一个请求]\n    G --> H[从块号计算 CHS]\n    H --> I[hd_out - 将 CHS 写入控制器]\n    I --> J[hd_out - 写入扇区计数]\n    J --> K{请求类型？}\n    K -->|READ| L[hd_out WIN_READ 命令]\n    K -->|WRITE| M[hd_out WIN_WRITE 命令]\n    L --> N[控制器通过 PIO 读取数据]\n    M --> O[控制器通过 PIO 写入数据]\n    N --> P[控制器触发 IRQ 14]\n    O --> P\n    P --> Q[hd_interrupt]\n    Q --> R{读还是写？}\n    R -->|读| S[read_intr：PIO 数据到缓冲区]\n    R -->|写| T[write_intr：下一个扇区或完成]\n    S --> U{还有扇区？}\n    U -->|是| V[读取下一个扇区]\n    U -->|否| W[end_request - 标记完成，唤醒等待者]\n    T --> U\n    W --> X{队列为空？}\n    X -->|否| E\n    X -->|是| Y[控制器空闲，等待新请求]",
+  "faq": [
+    {"q": "CHS 寻址如何工作？", "a": "CHS（柱面-磁头-扇区）以几何方式寻址磁盘。从线性块号：sector = (block % SECTORS_PER_TRACK) + 1；head = (block / SECTORS_PER_TRACK) % HEADS（通常 2-16）；cylinder = block / (SECTORS_PER_TRACK * HEADS)。IDE 控制器寄存器 0x1F3-0x1F6 存放扇区计数、扇区号、柱面低/高字节以及驱动器/磁头。"},
+    {"q": "什么是 PIO 模式？", "a": "编程 I/O：CPU 使用 rep insw/outsw 每次从 IDE 数据寄存器（0x1F0）读取/写入一个 16 位字以提升速度。这是 CPU 密集型的——传输完成前 CPU 一直忙于轮询。后续 Linux 版本添加了 DMA 模式，控制器直接将数据传输到内存，无需 CPU 参与。"},
+    {"q": "为什么请求队列是排序的？", "a": "电梯算法按块号排序待处理请求，以最小化磁盘磁头寻道时间。add_request 按顺序插入每个新请求，使磁头在盘片上沿一个方向移动。不排序的话，随机 I/O 会使磁头来回摆动，严重降低吞吐量。"}
+  ]
+}

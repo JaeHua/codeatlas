@@ -1,0 +1,675 @@
+[
+  {
+    "name": "schedule",
+    "kind": "function",
+    "file": "kernel/sched.c",
+    "line": 34,
+    "signature": "void schedule(void)",
+    "description": "内核调度器主函数，选择下一个可运行的进程并切换上下文"
+  },
+  {
+    "name": "sleep_on",
+    "kind": "function",
+    "file": "kernel/sched.c",
+    "line": 118,
+    "signature": "void sleep_on(struct task_struct **p)",
+    "description": "将当前进程加入等待队列并让出 CPU，进程状态变为 TASK_UNINTERRUPTIBLE"
+  },
+  {
+    "name": "wake_up",
+    "kind": "function",
+    "file": "kernel/sched.c",
+    "line": 145,
+    "signature": "void wake_up(struct task_struct **p)",
+    "description": "唤醒等待在指定等待队列上的所有进程，将其状态改为 TASK_RUNNING"
+  },
+  {
+    "name": "task_struct",
+    "kind": "struct",
+    "file": "kernel/sched.c",
+    "line": 12,
+    "description": "进程描述符，包含进程状态、PID、内存信息、文件描述符、信号处理等"
+  },
+  {
+    "name": "CURRENT_TASK",
+    "kind": "macro",
+    "file": "kernel/sched.c",
+    "line": 8,
+    "description": "获取当前正在运行的进程的 task_struct 指针"
+  },
+  {
+    "name": "copy_process",
+    "kind": "function",
+    "file": "kernel/fork.c",
+    "line": 28,
+    "signature": "int copy_process(int nr, long ebp, ...)",
+    "description": "创建子进程的核心函数，复制父进程的页表、文件描述符等资源"
+  },
+  {
+    "name": "find_empty_process",
+    "kind": "function",
+    "file": "kernel/fork.c",
+    "line": 1,
+    "signature": "int find_empty_process(void)",
+    "description": "在进程表中查找一个空闲的进程槽位（PID），返回可用的任务编号"
+  },
+  {
+    "name": "verify_area",
+    "kind": "function",
+    "file": "kernel/fork.c",
+    "line": 89,
+    "signature": "void verify_area(void *addr, int size)",
+    "description": "验证给定的用户空间内存地址范围是否可读/可写"
+  },
+  {
+    "name": "do_exit",
+    "kind": "function",
+    "file": "kernel/exit.c",
+    "line": 42,
+    "signature": "void do_exit(long code)",
+    "description": "进程退出处理，释放内存、关闭文件、向父进程发送信号"
+  },
+  {
+    "name": "sys_waitpid",
+    "kind": "function",
+    "file": "kernel/exit.c",
+    "line": 112,
+    "signature": "int sys_waitpid(pid_t pid, unsigned long *stat_addr, int options)",
+    "description": "等待子进程状态改变（退出/停止），获取子进程退出码"
+  },
+  {
+    "name": "sys_setup",
+    "kind": "function",
+    "file": "kernel/sys.c",
+    "line": 1,
+    "signature": "void sys_setup(void)",
+    "description": "系统调用初始化，注册所有系统调用处理函数到 sys_call_table"
+  },
+  {
+    "name": "sys_getpid",
+    "kind": "function",
+    "file": "kernel/sys.c",
+    "line": 56,
+    "signature": "int sys_getpid(void)",
+    "description": "返回当前进程的 PID"
+  },
+  {
+    "name": "send_sig",
+    "kind": "function",
+    "file": "kernel/signal.c",
+    "line": 23,
+    "signature": "int send_sig(long sig, struct task_struct *p, int priv)",
+    "description": "向指定进程发送信号，设置进程的 signal 位图"
+  },
+  {
+    "name": "sys_signal",
+    "kind": "function",
+    "file": "kernel/signal.c",
+    "line": 67,
+    "signature": "int sys_signal(int signum, long handler, long restorer)",
+    "description": "注册信号处理函数，设置进程对特定信号的处理方式"
+  },
+  {
+    "name": "do_signal",
+    "kind": "function",
+    "file": "kernel/signal.c",
+    "line": 134,
+    "signature": "void do_signal(long signr, long eip, ...)",
+    "description": "处理待投递的信号，调用注册的信号处理器或执行默认行为"
+  },
+  {
+    "name": "panic",
+    "kind": "function",
+    "file": "kernel/panic.c",
+    "line": 1,
+    "signature": "void panic(const char *s)",
+    "description": "内核 panic 处理，打印错误信息并进入死循环"
+  },
+  {
+    "name": "do_no_page",
+    "kind": "function",
+    "file": "mm/memory.c",
+    "line": 78,
+    "signature": "void do_no_page(unsigned long error_code, unsigned long address)",
+    "description": "缺页中断处理，为进程分配新的物理页面并建立页表映射"
+  },
+  {
+    "name": "do_wp_page",
+    "kind": "function",
+    "file": "mm/memory.c",
+    "line": 156,
+    "signature": "void do_wp_page(unsigned long error_code, unsigned long address)",
+    "description": "写保护页面中断处理（Copy-on-Write），复制页面后设置可写"
+  },
+  {
+    "name": "free_page",
+    "kind": "function",
+    "file": "mm/memory.c",
+    "line": 234,
+    "signature": "unsigned long free_page(unsigned long addr)",
+    "description": "释放一个物理页面，将其加入空闲页面链表供后续分配使用"
+  },
+  {
+    "name": "get_free_page",
+    "kind": "function",
+    "file": "mm/memory.c",
+    "line": 189,
+    "signature": "unsigned long get_free_page(void)",
+    "description": "从空闲页面链表中获取一个物理页面，用于内存分配"
+  },
+  {
+    "name": "swap_free",
+    "kind": "function",
+    "file": "mm/swap.c",
+    "line": 12,
+    "signature": "void swap_free(int entry)",
+    "description": "释放交换分区中的一个条目"
+  },
+  {
+    "name": "swap_out",
+    "kind": "function",
+    "file": "mm/swap.c",
+    "line": 45,
+    "signature": "int swap_out(unsigned long *table_ptr)",
+    "description": "将内存页面换出到交换分区，腾出物理内存"
+  },
+  {
+    "name": "swap_in",
+    "kind": "function",
+    "file": "mm/swap.c",
+    "line": 89,
+    "signature": "void swap_in(unsigned long *table_ptr)",
+    "description": "从交换分区将页面换入内存，用于缺页时的页面恢复"
+  },
+  {
+    "name": "swap_map",
+    "kind": "struct",
+    "file": "mm/swap.c",
+    "line": 1,
+    "description": "交换分区映射表，记录每个交换槽对应的进程和使用情况"
+  },
+  {
+    "name": "page_fault",
+    "kind": "function",
+    "file": "mm/page.s",
+    "line": 1,
+    "signature": "_page_fault",
+    "description": "缺页异常入口（汇编），保存现场后调用 do_no_page 处理"
+  },
+  {
+    "name": "do_execve",
+    "kind": "function",
+    "file": "fs/exec.c",
+    "line": 34,
+    "signature": "int do_execve(unsigned long *eip, ...)",
+    "description": "执行可执行文件的系统调用核心，加载 ELF/a.out 到内存并执行"
+  },
+  {
+    "name": "load_aout_binary",
+    "kind": "function",
+    "file": "fs/exec.c",
+    "line": 112,
+    "signature": "int load_aout_binary(struct linux_binprm *bprm)",
+    "description": "加载 a.out 格式的可执行文件，设置代码段和数据段"
+  },
+  {
+    "name": "sys_open",
+    "kind": "function",
+    "file": "fs/open.c",
+    "line": 28,
+    "signature": "int sys_open(const char *filename, int flag, int mode)",
+    "description": "打开文件系统调用，返回文件描述符"
+  },
+  {
+    "name": "sys_close",
+    "kind": "function",
+    "file": "fs/open.c",
+    "line": 67,
+    "signature": "int sys_close(unsigned int fd)",
+    "description": "关闭文件描述符，释放文件结构"
+  },
+  {
+    "name": "sys_read",
+    "kind": "function",
+    "file": "fs/open.c",
+    "line": 89,
+    "signature": "int sys_read(unsigned int fd, char *buf, int count)",
+    "description": "从文件描述符读取数据到用户缓冲区"
+  },
+  {
+    "name": "sys_write",
+    "kind": "function",
+    "file": "fs/open.c",
+    "line": 112,
+    "signature": "int sys_write(unsigned int fd, char *buf, int count)",
+    "description": "从用户缓冲区写入数据到文件描述符"
+  },
+  {
+    "name": "sys_lseek",
+    "kind": "function",
+    "file": "fs/open.c",
+    "line": 134,
+    "signature": "int sys_lseek(unsigned int fd, off_t offset, int origin)",
+    "description": "移动文件读/写指针位置"
+  },
+  {
+    "name": "rw_verify_area",
+    "kind": "function",
+    "file": "fs/read_write.c",
+    "line": 1,
+    "signature": "int rw_verify_area(int type, struct inode *inode, ...)",
+    "description": "验证文件读写操作的地址范围和权限"
+  },
+  {
+    "name": "bread",
+    "kind": "function",
+    "file": "fs/buffer.c",
+    "line": 23,
+    "signature": "struct buffer_head *bread(int dev, int block)",
+    "description": "从磁盘读取指定的数据块到缓冲区（buffer_head），用于文件系统 I/O"
+  },
+  {
+    "name": "brelse",
+    "kind": "function",
+    "file": "fs/buffer.c",
+    "line": 89,
+    "signature": "void brelse(struct buffer_head *buf)",
+    "description": "释放缓冲区引用计数，当计数归零时缓冲区可被回收"
+  },
+  {
+    "name": "getblk",
+    "kind": "function",
+    "file": "fs/buffer.c",
+    "line": 56,
+    "signature": "struct buffer_head *getblk(int dev, int block)",
+    "description": "获取指定设备和块的缓冲区，优先从缓冲区缓存查找，未命中则分配新缓冲"
+  },
+  {
+    "name": "buffer_head",
+    "kind": "struct",
+    "file": "fs/buffer.c",
+    "line": 1,
+    "description": "缓冲区头，用于磁盘块缓存，包含设备号、块号、数据指针、锁等"
+  },
+  {
+    "name": "BLOCK_SIZE",
+    "kind": "macro",
+    "file": "fs/buffer.c",
+    "line": 5,
+    "description": "磁盘块大小（通常为 1024 字节）"
+  },
+  {
+    "name": "mount_root",
+    "kind": "function",
+    "file": "fs/super.c",
+    "line": 12,
+    "signature": "void mount_root(void)",
+    "description": "挂载根文件系统，读取超级块并初始化根 inode"
+  },
+  {
+    "name": "super_block",
+    "kind": "struct",
+    "file": "fs/super.c",
+    "line": 1,
+    "description": "文件系统超级块，包含文件系统类型、inode 数量、块大小等元数据"
+  },
+  {
+    "name": "iget",
+    "kind": "function",
+    "file": "fs/inode.c",
+    "line": 23,
+    "signature": "struct inode *iget(int dev, int nr)",
+    "description": "获取或创建一个 inode，如果已缓存则返回引用，否则从磁盘加载"
+  },
+  {
+    "name": "iput",
+    "kind": "function",
+    "file": "fs/inode.c",
+    "line": 45,
+    "signature": "void iput(struct inode *inode)",
+    "description": "释放 inode 引用，当计数归零且无链接时写入磁盘并释放"
+  },
+  {
+    "name": "inode",
+    "kind": "struct",
+    "file": "fs/inode.c",
+    "line": 1,
+    "description": "索引节点，表示文件系统中的文件或目录，包含文件属性和数据块指针"
+  },
+  {
+    "name": "namei",
+    "kind": "function",
+    "file": "fs/namei.c",
+    "line": 34,
+    "signature": "struct inode *namei(const char *pathname)",
+    "description": "根据路径名查找对应的 inode，遍历目录项逐级解析"
+  },
+  {
+    "name": "open_namei",
+    "kind": "function",
+    "file": "fs/namei.c",
+    "line": 78,
+    "signature": "int open_namei(const char *pathname, int flag, int mode, struct inode **inode)",
+    "description": "打开指定路径的文件，返回对应的 inode"
+  },
+  {
+    "name": "sys_pipe",
+    "kind": "function",
+    "file": "fs/pipe.c",
+    "line": 1,
+    "signature": "int sys_pipe(unsigned long *fildes)",
+    "description": "创建管道，返回一对文件描述符用于进程间通信"
+  },
+  {
+    "name": "pipe_read",
+    "kind": "function",
+    "file": "fs/pipe.c",
+    "line": 34,
+    "signature": "int pipe_read(struct inode *inode, struct file *filp, char *buf, int count)",
+    "description": "从管道读取数据，管道空时阻塞等待"
+  },
+  {
+    "name": "pipe_write",
+    "kind": "function",
+    "file": "fs/pipe.c",
+    "line": 67,
+    "signature": "int pipe_write(struct inode *inode, struct file *filp, char *buf, int count)",
+    "description": "向管道写入数据，管道满时阻塞等待"
+  },
+  {
+    "name": "task_struct",
+    "kind": "struct",
+    "file": "include/sched.h",
+    "line": 12,
+    "description": "进程描述符，包含进程状态、PID、内存信息、文件描述符、信号处理等"
+  },
+  {
+    "name": "TASK_RUNNING",
+    "kind": "macro",
+    "file": "include/sched.h",
+    "line": 5,
+    "description": "进程状态：可运行（在就绪队列中等待 CPU）"
+  },
+  {
+    "name": "TASK_INTERRUPTIBLE",
+    "kind": "macro",
+    "file": "include/sched.h",
+    "line": 6,
+    "description": "进程状态：可中断睡眠（等待 I/O 等可被信号唤醒）"
+  },
+  {
+    "name": "TASK_UNINTERRUPTIBLE",
+    "kind": "macro",
+    "file": "include/sched.h",
+    "line": 7,
+    "description": "进程状态：不可中断睡眠（等待磁盘 I/O 等关键操作完成）"
+  },
+  {
+    "name": "PAGE_SIZE",
+    "kind": "macro",
+    "file": "include/mm.h",
+    "line": 3,
+    "description": "系统页面大小（x86 为 4096 字节）"
+  },
+  {
+    "name": "PAGE_MASK",
+    "kind": "macro",
+    "file": "include/mm.h",
+    "line": 4,
+    "description": "页面掩码（用于对齐内存地址）"
+  },
+  {
+    "name": "file",
+    "kind": "struct",
+    "file": "include/fs.h",
+    "line": 8,
+    "description": "文件结构体，关联 inode、文件指针位置和文件操作函数表"
+  },
+  {
+    "name": "file_operations",
+    "kind": "struct",
+    "file": "include/fs.h",
+    "line": 23,
+    "description": "文件操作函数表，包含 read/write/open/close 等函数指针"
+  },
+  {
+    "name": "O_RDONLY",
+    "kind": "macro",
+    "file": "include/fs.h",
+    "line": 1,
+    "description": "只读打开文件标志"
+  },
+  {
+    "name": "O_WRONLY",
+    "kind": "macro",
+    "file": "include/fs.h",
+    "line": 2,
+    "description": "只写打开文件标志"
+  },
+  {
+    "name": "O_RDWR",
+    "kind": "macro",
+    "file": "include/fs.h",
+    "line": 3,
+    "description": "读写打开文件标志"
+  },
+  {
+    "name": "__NR_setup",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 1,
+    "description": "系统调用号 0，对应 sys_setup"
+  },
+  {
+    "name": "__NR_exit",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 2,
+    "description": "系统调用号 1，对应进程退出"
+  },
+  {
+    "name": "__NR_fork",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 3,
+    "description": "系统调用号 2，对应创建子进程"
+  },
+  {
+    "name": "__NR_read",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 4,
+    "description": "系统调用号 3，对应读取文件"
+  },
+  {
+    "name": "__NR_write",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 5,
+    "description": "系统调用号 4，对应写入文件"
+  },
+  {
+    "name": "__NR_open",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 6,
+    "description": "系统调用号 5，对应打开文件"
+  },
+  {
+    "name": "__NR_close",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 7,
+    "description": "系统调用号 6，对应关闭文件"
+  },
+  {
+    "name": "__NR_waitpid",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 8,
+    "description": "系统调用号 7，对应等待子进程"
+  },
+  {
+    "name": "__NR_execve",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 11,
+    "description": "系统调用号 11，对应执行程序"
+  },
+  {
+    "name": "__NR_signal",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 48,
+    "description": "系统调用号 48，对应信号处理"
+  },
+  {
+    "name": "__NR_getpid",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 20,
+    "description": "系统调用号 20，对应获取 PID"
+  },
+  {
+    "name": "__NR_pipe",
+    "kind": "macro",
+    "file": "include/unistd.h",
+    "line": 42,
+    "description": "系统调用号 42，对应创建管道"
+  },
+  {
+    "name": "main",
+    "kind": "function",
+    "file": "init/main.c",
+    "line": 112,
+    "signature": "void main(void)",
+    "description": "内核入口点，完成硬件初始化、内存初始化，最终启动 init 进程"
+  },
+  {
+    "name": "init",
+    "kind": "function",
+    "file": "init/main.c",
+    "line": 89,
+    "signature": "void init(void)",
+    "description": "第一个用户态进程，打开终端、创建 shell、等待子进程"
+  },
+  {
+    "name": "time_init",
+    "kind": "function",
+    "file": "init/main.c",
+    "line": 34,
+    "signature": "static void time_init(void)",
+    "description": "初始化系统时钟中断（8253/8254 定时器）"
+  },
+  {
+    "name": "tty_init",
+    "kind": "function",
+    "file": "init/main.c",
+    "line": 45,
+    "signature": "static void tty_init(void)",
+    "description": "初始化终端设备驱动"
+  },
+  {
+    "name": "tty_read",
+    "kind": "function",
+    "file": "drivers/tty_io.c",
+    "line": 34,
+    "signature": "int tty_read(struct inode *inode, struct file *filp, char *buf, int count)",
+    "description": "从 TTY 终端读取用户输入，处理行缓冲和特殊字符"
+  },
+  {
+    "name": "tty_write",
+    "kind": "function",
+    "file": "drivers/tty_io.c",
+    "line": 78,
+    "signature": "int tty_write(struct inode *inode, struct file *filp, char *buf, int count)",
+    "description": "向 TTY 终端写入输出的内核函数，最终调用 con_write 显示到屏幕"
+  },
+  {
+    "name": "tty_struct",
+    "kind": "struct",
+    "file": "drivers/tty_io.c",
+    "line": 1,
+    "description": "TTY 设备结构体，包含输入/输出缓冲区和终端控制参数"
+  },
+  {
+    "name": "con_write",
+    "kind": "function",
+    "file": "drivers/console.c",
+    "line": 45,
+    "signature": "void con_write(struct tty_struct *tty)",
+    "description": "将字符写入 VGA 显存，处理换行、滚动等控制操作"
+  },
+  {
+    "name": "con_init",
+    "kind": "function",
+    "file": "drivers/console.c",
+    "line": 12,
+    "signature": "void con_init(void)",
+    "description": "初始化控制台，检测显示类型（MDA/CGA/EGA/VGA）并设置显存地址"
+  },
+  {
+    "name": "keyboard_interrupt",
+    "kind": "function",
+    "file": "drivers/keyboard.S",
+    "line": 1,
+    "signature": "_keyboard_interrupt",
+    "description": "键盘中断处理函数（汇编），读取扫描码并转换为 ASCII"
+  },
+  {
+    "name": "hd_init",
+    "kind": "function",
+    "file": "drivers/hd.c",
+    "line": 1,
+    "signature": "void hd_init(void)",
+    "description": "初始化硬盘控制器，发送 IDENTIFY 命令获取硬盘参数"
+  },
+  {
+    "name": "do_hd_request",
+    "kind": "function",
+    "file": "drivers/hd.c",
+    "line": 45,
+    "signature": "void do_hd_request(void)",
+    "description": "处理硬盘读写请求，设置 CHS 参数后向控制器发送命令"
+  },
+  {
+    "name": "strlen",
+    "kind": "function",
+    "file": "lib/string.c",
+    "line": 1,
+    "signature": "int strlen(const char *s)",
+    "description": "计算字符串长度"
+  },
+  {
+    "name": "strcpy",
+    "kind": "function",
+    "file": "lib/string.c",
+    "line": 12,
+    "signature": "char *strcpy(char *dest, const char *src)",
+    "description": "复制字符串"
+  },
+  {
+    "name": "memcpy",
+    "kind": "function",
+    "file": "lib/string.c",
+    "line": 34,
+    "signature": "void *memcpy(void *dest, const void *src, int n)",
+    "description": "内存块复制"
+  },
+  {
+    "name": "vsprintf",
+    "kind": "function",
+    "file": "lib/vsprintf.c",
+    "line": 1,
+    "signature": "int vsprintf(char *buf, const char *fmt, va_list args)",
+    "description": "格式化字符串输出（printf 核心），支持 %d %s %x 等格式"
+  },
+  {
+    "name": "printk",
+    "kind": "function",
+    "file": "lib/vsprintf.c",
+    "line": 89,
+    "signature": "int printk(const char *fmt, ...)",
+    "description": "内核日志输出函数，格式化字符串后写入日志缓冲区"
+  }
+]
