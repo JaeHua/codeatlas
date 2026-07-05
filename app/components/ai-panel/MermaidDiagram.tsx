@@ -30,18 +30,17 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     let cancelled = false
 
     async function render() {
-      // Aggressive sanitization: wrap ALL node labels in double quotes
-      // to prevent Mermaid from misinterpreting special chars
       let sanitized = chart
-        // Wrap [...] labels in quotes: text[some label] → text["some label"]
+        // Wrap [...] labels in quotes to escape special chars
         .replace(/\[([^\]]+)\]/g, (_, text) => {
           if (text.startsWith('"') && text.endsWith('"')) return `[${text}]`
-          const cleaned = text
-            .replace(/;/g, '&#59;')
-            .replace(/</g, '&#lt;')
-            .replace(/>/g, '&#gt;')
-            .replace(/&/g, '&#amp;')
-          return `["${cleaned}"]`
+          return `["${text.replace(/;/g, '&#59;').replace(/</g, '&#lt;').replace(/>/g, '&#gt;')}"]`
+        })
+        // Handle {...} diamond nodes — keep unchanged (Mermaid handles content fine)
+        // Only sanitize (...) rounded rect nodes that are NOT inside brackets
+        .replace(/\(([^)\]]+)\)/g, (_, text) => {
+          if (text.startsWith('"') && text.endsWith('"')) return `(${text})`
+          return `("${text.replace(/;/g, '&#59;')}")`
         })
         // Same for (...) labels
         .replace(/\(([^)]+)\)/g, (_, text) => {
