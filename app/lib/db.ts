@@ -23,10 +23,8 @@ function getDBPath(): string {
 
 // ─── Core DB Helpers ───
 
-let _db: SqlJsDatabase | null = null
-
 async function getDb(): Promise<SqlJsDatabase> {
-  if (_db) return _db
+  // Always open fresh from disk — no caching, no stale data
   const SQL = await initSqlJs({
     locateFile: (file: string) => {
       const p = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file)
@@ -35,14 +33,12 @@ async function getDb(): Promise<SqlJsDatabase> {
     }
   })
   const dbPath = getDBPath()
-  if (fs.existsSync(dbPath)) {
-    _db = new SQL.Database(fs.readFileSync(dbPath))
-  } else {
-    _db = new SQL.Database()
-  }
-  _db.run('PRAGMA journal_mode = WAL')
-  initSchema(_db)
-  return _db
+  const database: SqlJsDatabase = fs.existsSync(dbPath)
+    ? new SQL.Database(fs.readFileSync(dbPath))
+    : new SQL.Database()
+  database.run('PRAGMA journal_mode = WAL')
+  initSchema(database)
+  return database
 }
 
 function saveDb(database: SqlJsDatabase) {
@@ -55,10 +51,6 @@ function saveDb(database: SqlJsDatabase) {
   } catch (err) {
     console.error('Failed to save database:', err)
   }
-}
-
-export async function reloadFromDisk() {
-  _db = null
 }
 
 function exec(database: SqlJsDatabase, sql: string, params: any[] = []) {
