@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useId } from 'react'
+import { useEffect, useState, useId } from 'react'
 import mermaid from 'mermaid'
 
 let initialized = false
@@ -30,15 +30,37 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     let cancelled = false
 
     async function render() {
-      // Sanitize: wrap node labels containing special chars in quotes
+      // Aggressive sanitization: wrap ALL node labels in double quotes
+      // to prevent Mermaid from misinterpreting special chars
       let sanitized = chart
-        .replace(/\[([^\]]*?);([^\]]*)\]/g, '["$1#59;$2"]')
-        .replace(/\(([^)]*?);([^)]*)\)/g, '("$1#59;$2")')
-        .replace(/\[([^\]]*?)</g, '["$1')
-        .replace(/>([^\]]*?)\]/g, '$1"]')
+        // Wrap [...] labels in quotes: text[some label] → text["some label"]
+        .replace(/\[([^\]]+)\]/g, (_, text) => {
+          // Don't double-wrap if already quoted
+          if (text.startsWith('"') && text.endsWith('"')) return `[${text}]`
+          // Replace problematic chars inside
+          const cleaned = text
+            .replace(/;/g, '#59;')
+            .replace(/</g, '#lt;')
+            .replace(/>/g, '#gt;')
+            .replace(/&/g, '#amp;')
+          return `["${cleaned}"]`
+        })
+        // Same for (...) labels
+        .replace(/\(([^)]+)\)/g, (_, text) => {
+          if (text.startsWith('"') && text.endsWith('"')) return `(${text})`
+          return `("${text}")`
+        })
 
+      // Try to render
       try {
         const { svg: rendered } = await mermaid.render(`${id}-${Date.now()}`, sanitized)
+        if (!cancelled) { setSvg(rendered); setError(false) }
+        return
+      } catch { /* try raw next */ }
+
+      // Fallback: try raw without sanitization
+      try {
+        const { svg: rendered } = await mermaid.render(`${id}-fallback-${Date.now()}`, chart)
         if (!cancelled) { setSvg(rendered); setError(false) }
       } catch {
         if (!cancelled) setError(true)
