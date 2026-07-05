@@ -120,80 +120,16 @@ export async function clearParseError(id: number) {
 }
 
 function initSchema(database: SqlJsDatabase) {
-  database.run(`
-    CREATE TABLE IF NOT EXISTS projects (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      source_path TEXT NOT NULL,
-      source_type TEXT NOT NULL DEFAULT 'local',
-      created_at TEXT,
-      last_opened TEXT,
-      parse_status TEXT DEFAULT 'pending',
-      parse_progress INTEGER DEFAULT 0,
-      parse_error TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS files (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL,
-      path TEXT NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      parent_path TEXT,
-      content TEXT,
-      UNIQUE(project_id, path)
-    );
-
-    CREATE TABLE IF NOT EXISTS symbols (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      file TEXT NOT NULL,
-      line INTEGER,
-      signature TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS includes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL,
-      from_file TEXT NOT NULL,
-      to_file TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS calls (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL,
-      caller TEXT NOT NULL,
-      callee TEXT NOT NULL,
-      caller_file TEXT,
-      callee_file TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS struct_deps (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL,
-      struct_name TEXT NOT NULL,
-      uses TEXT NOT NULL,
-      relation TEXT DEFAULT 'pointer'
-    );
-
-    CREATE TABLE IF NOT EXISTS ai_cache (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      project_id INTEGER NOT NULL,
-      file_path TEXT NOT NULL,
-      summary TEXT,
-      explanation TEXT,
-      key_functions TEXT,
-      prerequisites TEXT,
-      related_files TEXT,
-      mermaid TEXT,
-      generated_at TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS schema_version (version INTEGER);
-    INSERT OR IGNORE INTO schema_version (version) VALUES (2);
-  `)
+  const stmts = [
+    `CREATE TABLE IF NOT EXISTS projects (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, source_path TEXT NOT NULL, source_type TEXT NOT NULL DEFAULT 'local', created_at TEXT, last_opened TEXT, parse_status TEXT DEFAULT 'pending', parse_progress INTEGER DEFAULT 0, parse_error TEXT)`,
+    `CREATE TABLE IF NOT EXISTS files (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, type TEXT NOT NULL, parent_path TEXT, content TEXT, UNIQUE(project_id, path))`,
+    `CREATE TABLE IF NOT EXISTS symbols (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL, file TEXT NOT NULL, line INTEGER, signature TEXT)`,
+    `CREATE TABLE IF NOT EXISTS includes (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, from_file TEXT NOT NULL, to_file TEXT NOT NULL)`,
+    `CREATE TABLE IF NOT EXISTS calls (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, caller TEXT NOT NULL, callee TEXT NOT NULL, caller_file TEXT, callee_file TEXT)`,
+    `CREATE TABLE IF NOT EXISTS struct_deps (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, struct_name TEXT NOT NULL, uses TEXT NOT NULL, relation TEXT DEFAULT 'pointer')`,
+    `CREATE TABLE IF NOT EXISTS ai_cache (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, file_path TEXT NOT NULL, summary TEXT, explanation TEXT, key_functions TEXT, prerequisites TEXT, related_files TEXT, mermaid TEXT, generated_at TEXT)`,
+  ]
+  for (const sql of stmts) database.run(sql)
 }
 
 // ─── File queries ───
