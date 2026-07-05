@@ -35,14 +35,12 @@ export function MermaidDiagram({ chart }: { chart: string }) {
       let sanitized = chart
         // Wrap [...] labels in quotes: text[some label] → text["some label"]
         .replace(/\[([^\]]+)\]/g, (_, text) => {
-          // Don't double-wrap if already quoted
           if (text.startsWith('"') && text.endsWith('"')) return `[${text}]`
-          // Replace problematic chars inside
           const cleaned = text
-            .replace(/;/g, '#59;')
-            .replace(/</g, '#lt;')
-            .replace(/>/g, '#gt;')
-            .replace(/&/g, '#amp;')
+            .replace(/;/g, '&#59;')
+            .replace(/</g, '&#lt;')
+            .replace(/>/g, '&#gt;')
+            .replace(/&/g, '&#amp;')
           return `["${cleaned}"]`
         })
         // Same for (...) labels
