@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react
 import { useStore } from '@/app/store'
 import { loadSourceCode } from '@/app/lib/data-api'
 import Editor, { type OnMount } from '@monaco-editor/react'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useTheme } from '@/app/store/theme'
 import type { editor } from 'monaco-editor'
 
@@ -414,11 +414,6 @@ export function CodeViewer() {
           },
         }}
       />
-      {/* Selection explain hint */}
-      <div className="absolute bottom-4 right-4 text-[10px] text-neutral-600 bg-neutral-900/80 px-2 py-1 rounded border border-neutral-800/50 pointer-events-none">
-        <Sparkles className="h-3 w-3 inline mr-1" />
-        选中代码后按 Cmd+E 一键解释
-      </div>
     </div>
   )
 }
