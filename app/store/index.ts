@@ -41,6 +41,7 @@ interface AppStore {
 
   toggleDir: (path: string) => void
   selectFile: (path: string | null) => void
+  selectFileWithLine: (path: string | null, line?: number) => void
 
   setActiveView: (view: ActiveView) => void
   setSelectedEntity: (entity: SelectedEntity | null) => void
@@ -103,18 +104,30 @@ export const useStore = create<AppStore>()(
             : [...s.expandedDirs, path],
         })),
 
-      selectFile: (path) =>
-        set((s) => {
-          const recent = path && !s.recentFiles.includes(path)
-            ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
-            : s.recentFiles
-          return {
-            selectedFile: path,
-            activeView: 'code',
-            selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path } : null,
-            recentFiles: recent,
-          }
-        }),
+  selectFile: (path) =>
+    set((s) => {
+      const recent = path && !s.recentFiles.includes(path)
+        ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
+        : s.recentFiles
+      return {
+        selectedFile: path,
+        activeView: 'code',
+        selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path } : null,
+        recentFiles: recent,
+      }
+    }),
+  selectFileWithLine: (path: string | null, line?: number) =>
+    set((s) => {
+      const recent = path && !s.recentFiles.includes(path)
+        ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
+        : s.recentFiles
+      return {
+        selectedFile: path,
+        activeView: 'code',
+        selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path, line } : null,
+        recentFiles: recent,
+      }
+    }),
 
       setActiveView: (activeView) => set({ activeView }),
       setSelectedEntity: (selectedEntity) => set({ selectedEntity }),

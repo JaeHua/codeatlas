@@ -94,12 +94,19 @@ export default function Home() {
         const { id } = await res.json()
 
         if (importedFiles.length > 0) {
-          const formData = new FormData()
-          for (const f of importedFiles) {
-            formData.append(`file:${f.filePath}`, new File([f.content], f.filePath.split('/').pop() || 'file'))
+          const body = JSON.stringify({ files: importedFiles })
+          const importRes = await fetch(`/api/projects/${id}/import-local`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+          })
+          let importData: any = {}
+          try {
+            importData = await importRes.json()
+          } catch {
+            const text = await importRes.text().catch(() => '')
+            throw new Error('服务器响应异常: ' + text.slice(0, 200))
           }
-          const importRes = await fetch(`/api/projects/${id}/import-local`, { method: 'POST', body: formData })
-          const importData = await importRes.json()
           if (!importRes.ok) throw new Error(importData.error || '上传文件失败')
         } else {
           throw new Error('未选择文件，请点击文件夹区域选择项目目录')
@@ -131,35 +138,40 @@ export default function Home() {
     loadProjects()
   }
 
-  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files) return
+  const handleFolderSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const inputFiles = e.target.files
+      if (!inputFiles || inputFiles.length === 0) return
 
-    const fileList: { filePath: string; content: string }[] = []
-    const readers: Promise<void>[] = []
-    let folderName = ''
+      const fileList: { filePath: string; content: string }[] = []
+      let folderName = ''
+      const total = inputFiles.length
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const fullPath = file.webkitRelativePath || file.name
-      const slashIdx = fullPath.indexOf('/')
-      // Extract folder name from first file
-      if (slashIdx > 0 && !folderName) folderName = fullPath.slice(0, slashIdx)
-      // Strip the top-level folder name so we import the CONTENTS
-      const relativePath = slashIdx > 0 ? fullPath.slice(slashIdx + 1) : fullPath
-      readers.push(
-        file.text().then((content) => {
+      for (let i = 0; i < total; i++) {
+        try {
+          const file = inputFiles[i]
+          const fullPath = file.webkitRelativePath || file.name
+          const slashIdx = fullPath.indexOf('/')
+          if (slashIdx > 0 && !folderName) folderName = fullPath.slice(0, slashIdx)
+          const relativePath = slashIdx > 0 ? fullPath.slice(slashIdx + 1) : fullPath
+
+          // Skip empty files or hidden directories
+          if (!relativePath || relativePath.startsWith('.')) continue
+
+          const content = await file.text()
           fileList.push({ filePath: relativePath, content })
-        })
-      )
-    }
+        } catch (fileErr) {
+          // Skip unreadable files
+        }
+      }
 
-    Promise.all(readers).then(() => {
       setImportedFiles(fileList)
       if (!projectName) {
         setProjectName(folderName || fileList[0]?.filePath.split('/')[0] || 'my-project')
       }
-    })
+    } catch (err) {
+      setError('读取文件失败: ' + String(err))
+    }
   }
 
   return (
@@ -170,7 +182,7 @@ export default function Home() {
           <Logo className="h-14 w-14" />
           <h1 className="text-lg font-semibold">CodeAtlas</h1>
         </div>
-        <Button onClick={() => setDialogOpen(true)} className="h-8 text-xs gap-1.5">
+        <Button onClick={() => setDialogOpen(true)} className="h-8 text-xs gap-1.5 ripple hover-lift">
           <Plus className="h-3.5 w-3.5" />
           新建项目
         </Button>
@@ -179,8 +191,10 @@ export default function Home() {
       {/* Project list */}
       <div className="p-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-5 w-5 animate-spin text-[var(--muted-foreground)]" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1,2,3].map((i) => (
+              <div key={i} className="h-36 rounded-lg animate-shimmer" />
+            ))}
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-[var(--muted-foreground)] gap-3">
@@ -193,7 +207,7 @@ export default function Home() {
             {projects.map((p) => (
               <div
                 key={p.id}
-                className="group border border-[var(--border)] rounded-lg p-4 hover:border-[var(--primary)]/50 transition-all duration-200 cursor-pointer bg-[var(--card)]/30"
+                className="group glass rounded-xl p-4 cursor-pointer animate-slide-up glow-hover"
                 onClick={() => router.push(`/project/${p.id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
@@ -250,7 +264,7 @@ export default function Home() {
 
       {/* New project dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] sm:max-w-md">
+        <DialogContent className="glass sm:max-w-md animate-scale-in">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">导入项目</DialogTitle>
           </DialogHeader>

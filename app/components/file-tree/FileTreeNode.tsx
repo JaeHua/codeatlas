@@ -53,10 +53,10 @@ export function FileTreeNode({ node, depth, selectedFile, onSelect }: Props) {
               onSelect(node.path)
             }
           }}
-          className={cn(
-            'flex items-center gap-1 flex-1 text-left px-2 py-0.5 text-sm hover:bg-[var(--accent)] transition-colors min-w-0',
-            isSelected && 'bg-[var(--primary)]/20 text-[var(--primary)] hover:bg-[var(--primary)]/20'
-          )}
+            className={cn(
+              'flex items-center gap-1 flex-1 text-left px-2 py-0.5 text-sm transition-all duration-200 min-w-0',
+              isSelected && 'glass animate-breathe'
+            )}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
           {isDir && (

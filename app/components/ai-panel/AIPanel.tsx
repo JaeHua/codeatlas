@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, FileText, Hash, BookOpen, GitBranch, MessageCircle, ExternalLink, Send, Sparkles, AlertTriangle, X } from 'lucide-react'
+import { Loader2, FileText, Hash, BookOpen, GitBranch, MessageCircle, ExternalLink, Send, Sparkles, AlertTriangle, X, Settings } from 'lucide-react'
 import { MermaidDiagram } from './MermaidDiagram'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import type { MockAI } from '@/app/lib/types'
@@ -273,8 +273,28 @@ export function AIPanel() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-4 text-center">
-        暂无该文件的 AI 解析数据
+      <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-4 text-center gap-2">
+        <p>暂无该文件的 AI 解析数据</p>
+        <p className="text-xs text-[var(--muted-foreground)]/70">请确认已配置 DeepSeek API Key（右上角齿轮）</p>
+      </div>
+    )
+  }
+
+  // Show API key missing state
+  if ((data as any).error === 'no_key') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-4 text-center gap-3">
+        <Settings className="h-8 w-8 text-[var(--primary)]" />
+        <p>未配置 AI API Key</p>
+        <button
+          onClick={() => {
+            // Trigger settings open
+            window.dispatchEvent(new Event('codeatlas:open-settings'))
+          }}
+          className="px-3 py-1.5 text-xs border border-[var(--border)] rounded-lg hover:bg-[var(--accent)] transition-colors"
+        >
+          前往设置
+        </button>
       </div>
     )
   }

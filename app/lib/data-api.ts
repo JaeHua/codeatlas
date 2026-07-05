@@ -15,25 +15,31 @@ export async function loadAIMock(projectId: number, filePath: string): Promise<{
   prerequisites: string[]
   relatedFiles: { path: string; reason: string }[]
   mermaid?: string
+  error?: string
 } | null> {
-  const settings = useStore.getState()
-  // Don't call AI if no key
   const settingsData = JSON.parse(localStorage.getItem('codeatlas-settings') || '{}')
   const apiKey = settingsData?.state?.apiKey || ''
-  if (!apiKey) return null
+  const baseUrl = settingsData?.state?.baseUrl || 'https://api.deepseek.com'
+  const model = settingsData?.state?.model || 'deepseek-chat'
 
-  const res = await fetch(`/api/projects/${projectId}/ai-explain`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      filePath,
-      apiKey,
-      baseUrl: settingsData?.state?.baseUrl || 'https://api.deepseek.com',
-      model: settingsData?.state?.model || 'deepseek-chat',
-    }),
-  })
-  if (!res.ok) return null
-  return res.json()
+  if (!apiKey) {
+    return { filePath, summary: '未配置AI', plainExplanation: '请点击右上角齿轮图标设置 DeepSeek API Key', keyFunctions: [], prerequisites: [], relatedFiles: [], error: 'no_key' }
+  }
+
+  try {
+    const res = await fetch(`/api/projects/${projectId}/ai-explain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath, apiKey, baseUrl, model }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { filePath, summary: 'AI请求失败', plainExplanation: err.error || `HTTP ${res.status}`, keyFunctions: [], prerequisites: [], relatedFiles: [], error: 'api_error' }
+    }
+    return res.json()
+  } catch (e) {
+    return { filePath, summary: '连接失败', plainExplanation: String(e), keyFunctions: [], prerequisites: [], relatedFiles: [], error: 'network' }
+  }
 }
 
 export async function chatCompletionStream(

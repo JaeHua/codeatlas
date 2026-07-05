@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * parse.ts — Parse Linux Kernel 0.21 source code into static JSON data files.
  *

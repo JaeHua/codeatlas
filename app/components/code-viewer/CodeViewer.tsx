@@ -69,11 +69,46 @@ export function CodeViewer() {
     monacoRef.current.editor.setTheme('dynamic-theme')
   }, [theme])
 
-  const { selectedFile, symbols, setSelectedEntity, projectId } = useStore()
+  const { selectedFile, symbols, setSelectedEntity, projectId, selectedEntity } = useStore()
   const [source, setSource] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hoverDisposeRef = useRef<() => void>(() => {})
+  const pendingLineRef = useRef<number | null>(null)
+  const decorationsRef = useRef<string[]>([])
+
+  // Track pending line from search navigation
+  useEffect(() => {
+    if (selectedEntity?.line) pendingLineRef.current = selectedEntity.line
+  }, [selectedEntity?.line])
+
+  // Scroll to line & highlight when source is ready
+  useEffect(() => {
+    const line = pendingLineRef.current
+    if (!line || !editorRef.current || !source) return
+    pendingLineRef.current = null
+    const ed = editorRef.current
+    ed.revealLineInCenter(line)
+    ed.setPosition({ lineNumber: line, column: 1 })
+    // Remove old decorations
+    decorationsRef.current = ed.deltaDecorations(decorationsRef.current, [{
+      range: {
+        startLineNumber: line,
+        startColumn: 1,
+        endLineNumber: line,
+        endColumn: 1,
+      },
+      options: {
+        isWholeLine: true,
+        className: 'search-highlight-line',
+        marginClassName: 'search-highlight-margin',
+      },
+    }])
+    // Fade out after 3 seconds
+    setTimeout(() => {
+      decorationsRef.current = ed.deltaDecorations(decorationsRef.current, [])
+    }, 3000)
+  }, [source])
 
   // Hover provider for function names
   const registerHover = useCallback(
@@ -367,7 +402,7 @@ export function CodeViewer() {
           lineNumbers: 'on',
           scrollBeyondLastLine: false,
           wordWrap: 'off',
-          padding: { top: 8 },
+          mouseWheelZoom: true,
           smoothScrolling: true,
           cursorBlinking: 'smooth',
           renderLineHighlight: 'line',

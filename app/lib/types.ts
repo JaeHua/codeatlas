@@ -46,7 +46,7 @@ export interface MockAI {
 }
 
 export interface SearchResult {
-  type: 'file' | 'function' | 'struct' | 'macro'
+  type: 'file' | 'function' | 'struct' | 'macro' | 'content'
   name: string
   path: string
   line?: number
@@ -59,6 +59,7 @@ export interface SelectedEntity {
   type: 'file' | 'function'
   path: string
   name: string
+  line?: number
 }
 
 export interface GraphEdge {

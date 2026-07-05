@@ -1,29 +1,141 @@
-import Database from 'better-sqlite3'
+import initSqlJs, { type Database as SqlJsDatabase, type SqlJsStatic } from 'sql.js'
 import path from 'path'
+import fs from 'fs'
 
-const DB_PATH = path.join(process.cwd(), 'codeatlas.db')
-
-let db: Database.Database | null = null
-
-export function getDb(): Database.Database {
-  if (!db) {
-    db = new Database(DB_PATH)
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = ON')
-    initSchema(db)
+export function getDataDir(): string {
+  const appData = process.env.APP_DATA_PATH
+  if (appData) {
+    if (!fs.existsSync(appData)) fs.mkdirSync(appData, { recursive: true })
+    return appData
   }
-  return db
+  return process.cwd()
 }
 
-function initSchema(db: Database.Database) {
-  db.exec(`
+export function getProjectsDir(): string {
+  const dir = path.join(getDataDir(), 'projects')
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+  return dir
+}
+
+function getDBPath(): string {
+  return path.join(getDataDir(), 'codeatlas.db')
+}
+
+// ─── Core DB Helpers ───
+
+let _db: SqlJsDatabase | null = null
+
+async function getDb(): Promise<SqlJsDatabase> {
+  if (_db) return _db
+  const SQL = await initSqlJs({
+    locateFile: (file: string) => {
+      const p = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', file)
+      if (fs.existsSync(p)) return p
+      return file
+    }
+  })
+  const dbPath = getDBPath()
+  if (fs.existsSync(dbPath)) {
+    _db = new SQL.Database(fs.readFileSync(dbPath))
+  } else {
+    _db = new SQL.Database()
+  }
+  _db.run('PRAGMA journal_mode = WAL')
+  initSchema(_db)
+  return _db
+}
+
+function saveDb(database: SqlJsDatabase) {
+  try {
+    const dbPath = getDBPath()
+    const dir = path.dirname(dbPath)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    const data = database.export()
+    fs.writeFileSync(dbPath, Buffer.from(data))
+  } catch (err) {
+    console.error('Failed to save database:', err)
+  }
+}
+
+export async function reloadFromDisk() {
+  _db = null
+}
+
+function exec(database: SqlJsDatabase, sql: string, params: any[] = []) {
+  const stmt = database.prepare(sql)
+  if (params.length > 0) stmt.bind(params)
+  stmt.step()
+  stmt.free()
+  saveDb(database)
+}
+
+function queryAll(database: SqlJsDatabase, sql: string, params: any[] = []): any[] {
+  const stmt = database.prepare(sql)
+  if (params.length > 0) stmt.bind(params)
+  const results: any[] = []
+  while (stmt.step()) results.push(stmt.getAsObject())
+  stmt.free()
+  return results
+}
+
+function queryOne(database: SqlJsDatabase, sql: string, params: any[] = []): any | undefined {
+  const rows = queryAll(database, sql, params)
+  return rows[0]
+}
+
+// ─── Project queries ───
+
+export async function listProjects() {
+  return queryAll(await getDb(), 'SELECT * FROM projects ORDER BY last_opened DESC')
+}
+
+export async function getProject(id: number) {
+  return queryOne(await getDb(), 'SELECT * FROM projects WHERE id = ?', [id])
+}
+
+export async function createProject(name: string, sourcePath: string, sourceType: string) {
+  const database = await getDb()
+  exec(database, 'INSERT INTO projects (name, source_path, source_type) VALUES (?, ?, ?)', [name, sourcePath, sourceType])
+  const rows = queryAll(database, 'SELECT id FROM projects WHERE name = ? AND source_path = ? ORDER BY id DESC LIMIT 1', [name, sourcePath])
+  return rows[0]?.id as number
+}
+
+export async function deleteProject(id: number) {
+  const database = await getDb()
+  exec(database, 'DELETE FROM includes WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM calls WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM struct_deps WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM symbols WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM files WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM ai_cache WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM projects WHERE id = ?', [id])
+}
+
+export async function updateParseStatus(id: number, status: string) {
+  exec(await getDb(), 'UPDATE projects SET parse_status = ? WHERE id = ?', [status, id])
+}
+
+export async function updateParseProgress(id: number, progress: number) {
+  exec(await getDb(), 'UPDATE projects SET parse_progress = ? WHERE id = ?', [progress, id])
+}
+
+export async function updateParseError(id: number, error: string) {
+  exec(await getDb(), 'UPDATE projects SET parse_status = ?, parse_error = ? WHERE id = ?', ['error', error, id])
+}
+
+export async function clearParseError(id: number) {
+  exec(await getDb(), 'UPDATE projects SET parse_error = NULL WHERE id = ?', [id])
+}
+
+function initSchema(database: SqlJsDatabase) {
+  database.run(`
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       source_path TEXT NOT NULL,
       source_type TEXT NOT NULL DEFAULT 'local',
-      created_at TEXT DEFAULT (datetime('now')),
-      last_opened TEXT DEFAULT (datetime('now')),
+      created_at TEXT,
+      last_opened TEXT,
       parse_status TEXT DEFAULT 'pending',
       parse_progress INTEGER DEFAULT 0,
       parse_error TEXT
@@ -37,7 +149,6 @@ function initSchema(db: Database.Database) {
       type TEXT NOT NULL,
       parent_path TEXT,
       content TEXT,
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
       UNIQUE(project_id, path)
     );
 
@@ -48,16 +159,14 @@ function initSchema(db: Database.Database) {
       kind TEXT NOT NULL,
       file TEXT NOT NULL,
       line INTEGER,
-      signature TEXT,
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      signature TEXT
     );
 
     CREATE TABLE IF NOT EXISTS includes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       project_id INTEGER NOT NULL,
       from_file TEXT NOT NULL,
-      to_file TEXT NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      to_file TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS calls (
@@ -66,8 +175,7 @@ function initSchema(db: Database.Database) {
       caller TEXT NOT NULL,
       callee TEXT NOT NULL,
       caller_file TEXT,
-      callee_file TEXT,
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      callee_file TEXT
     );
 
     CREATE TABLE IF NOT EXISTS struct_deps (
@@ -75,8 +183,7 @@ function initSchema(db: Database.Database) {
       project_id INTEGER NOT NULL,
       struct_name TEXT NOT NULL,
       uses TEXT NOT NULL,
-      relation TEXT DEFAULT 'pointer',
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      relation TEXT DEFAULT 'pointer'
     );
 
     CREATE TABLE IF NOT EXISTS ai_cache (
@@ -89,143 +196,92 @@ function initSchema(db: Database.Database) {
       prerequisites TEXT,
       related_files TEXT,
       mermaid TEXT,
-      generated_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      generated_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS schema_version (version INTEGER);
+    INSERT OR IGNORE INTO schema_version (version) VALUES (2);
   `)
-
-  // Migration: add missing columns to existing DB
-  try { db.exec('ALTER TABLE projects ADD COLUMN parse_error TEXT') } catch {}
-  try { db.exec('ALTER TABLE projects ADD COLUMN parse_progress INTEGER DEFAULT 0') } catch {}
-  // Remove duplicate file records, then add unique constraint
-  try {
-    db.exec(`
-      DELETE FROM files WHERE id NOT IN (
-        SELECT MIN(id) FROM files GROUP BY project_id, path
-      )
-    `)
-  } catch {}
-  try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_files_project_path ON files(project_id, path)') } catch {}
 }
 
-// Project queries
-export function listProjects() {
-  return getDb().prepare('SELECT * FROM projects ORDER BY last_opened DESC').all()
+// ─── File queries ───
+
+export async function getFileTree(projectId: number) {
+  return queryAll(await getDb(), 'SELECT * FROM files WHERE project_id = ? ORDER BY path', [projectId])
 }
 
-export function getProject(id: number) {
-  return getDb().prepare('SELECT * FROM projects WHERE id = ?').get(id)
-}
-
-export function createProject(name: string, sourcePath: string, sourceType: string) {
-  const result = getDb().prepare(
-    'INSERT INTO projects (name, source_path, source_type) VALUES (?, ?, ?)'
-  ).run(name, sourcePath, sourceType)
-  return result.lastInsertRowid as number
-}
-
-export function deleteProject(id: number) {
-  getDb().prepare('DELETE FROM projects WHERE id = ?').run(id)
-}
-
-export function updateParseStatus(id: number, status: string) {
-  getDb().prepare('UPDATE projects SET parse_status = ? WHERE id = ?').run(status, id)
-}
-
-export function updateParseError(id: number, error: string) {
-  getDb().prepare('UPDATE projects SET parse_status = ?, parse_error = ? WHERE id = ?').run('error', error, id)
-}
-
-// File queries
-export function getFileTree(projectId: number) {
-  return getDb().prepare(
-    'SELECT * FROM files WHERE project_id = ? ORDER BY path'
-  ).all(projectId)
-}
-
-export function getSourceCode(projectId: number, filePath: string) {
-  const row = getDb().prepare(
-    'SELECT content FROM files WHERE project_id = ? AND path = ?'
-  ).get(projectId, filePath) as { content: string } | undefined
+export async function getSourceCode(projectId: number, filePath: string) {
+  const row = queryOne(await getDb(), 'SELECT content FROM files WHERE project_id = ? AND path = ?', [projectId, filePath])
   return row?.content || ''
 }
 
-export function insertFile(projectId: number, file: { path: string; name: string; type: string; parentPath?: string | null; content?: string | null }) {
-  getDb().prepare(
-    'INSERT OR REPLACE INTO files (project_id, path, name, type, parent_path, content) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(projectId, file.path, file.name, file.type, file.parentPath || null, file.content || null)
+export async function insertFile(projectId: number, file: { path: string; name: string; type: string; parentPath?: string | null; content?: string | null }) {
+  exec(await getDb(),
+    'INSERT OR IGNORE INTO files (project_id, path, name, type, parent_path, content) VALUES (?, ?, ?, ?, ?, ?)',
+    [projectId, file.path, file.name, file.type, file.parentPath || null, file.content || null]
+  )
 }
 
-// Symbol queries
-export function getSymbols(projectId: number) {
-  return getDb().prepare('SELECT * FROM symbols WHERE project_id = ?').all(projectId)
+// ─── Symbol queries ───
+
+export async function getSymbols(projectId: number) {
+  return queryAll(await getDb(), 'SELECT * FROM symbols WHERE project_id = ?', [projectId])
 }
 
-export function insertSymbol(projectId: number, sym: { name: string; kind: string; file: string; line: number; signature?: string }) {
-  getDb().prepare(
-    'INSERT INTO symbols (project_id, name, kind, file, line, signature) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(projectId, sym.name, sym.kind, sym.file, sym.line, sym.signature || null)
+export async function insertSymbol(projectId: number, sym: { name: string; kind: string; file: string; line: number; signature?: string }) {
+  exec(await getDb(),
+    'INSERT INTO symbols (project_id, name, kind, file, line, signature) VALUES (?, ?, ?, ?, ?, ?)',
+    [projectId, sym.name, sym.kind, sym.file, sym.line, sym.signature || null]
+  )
 }
 
-// Include queries
-export function getIncludes(projectId: number) {
-  return getDb().prepare('SELECT * FROM includes WHERE project_id = ?').all(projectId)
+// ─── Include queries ───
+
+export async function getIncludes(projectId: number) {
+  return queryAll(await getDb(), 'SELECT * FROM includes WHERE project_id = ?', [projectId])
 }
 
-export function insertInclude(projectId: number, inc: { from_file: string; to_file: string }) {
-  getDb().prepare(
-    'INSERT INTO includes (project_id, from_file, to_file) VALUES (?, ?, ?)'
-  ).run(projectId, inc.from_file, inc.to_file)
+export async function insertInclude(projectId: number, inc: { from_file: string; to_file: string }) {
+  exec(await getDb(), 'INSERT INTO includes (project_id, from_file, to_file) VALUES (?, ?, ?)', [projectId, inc.from_file, inc.to_file])
 }
 
-// Call queries
-export function getCalls(projectId: number) {
-  return getDb().prepare('SELECT * FROM calls WHERE project_id = ?').all(projectId)
+// ─── Call queries ───
+
+export async function getCalls(projectId: number) {
+  return queryAll(await getDb(), 'SELECT * FROM calls WHERE project_id = ?', [projectId])
 }
 
-export function insertCall(projectId: number, call: { caller: string; callee: string; caller_file?: string; callee_file?: string }) {
-  getDb().prepare(
-    'INSERT INTO calls (project_id, caller, callee, caller_file, callee_file) VALUES (?, ?, ?, ?, ?)'
-  ).run(projectId, call.caller, call.callee, call.caller_file || null, call.callee_file || null)
+export async function insertCall(projectId: number, call: { caller: string; callee: string; caller_file?: string; callee_file?: string }) {
+  exec(await getDb(),
+    'INSERT INTO calls (project_id, caller, callee, caller_file, callee_file) VALUES (?, ?, ?, ?, ?)',
+    [projectId, call.caller, call.callee, call.caller_file || null, call.callee_file || null]
+  )
 }
 
-// Struct dep queries
-export function getStructDeps(projectId: number) {
-  return getDb().prepare('SELECT * FROM struct_deps WHERE project_id = ?').all(projectId)
+// ─── Struct dep queries ───
+
+export async function getStructDeps(projectId: number) {
+  return queryAll(await getDb(), 'SELECT * FROM struct_deps WHERE project_id = ?', [projectId])
 }
 
-export function insertStructDep(projectId: number, dep: { struct: string; uses: string; relation: string }) {
-  getDb().prepare(
-    'INSERT INTO struct_deps (project_id, struct_name, uses, relation) VALUES (?, ?, ?, ?)'
-  ).run(projectId, dep.struct, dep.uses, dep.relation)
+export async function insertStructDep(projectId: number, dep: { struct_name: string; uses: string; relation: string }) {
+  exec(await getDb(),
+    'INSERT INTO struct_deps (project_id, struct_name, uses, relation) VALUES (?, ?, ?, ?)',
+    [projectId, dep.struct_name, dep.uses, dep.relation]
+  )
 }
 
-// AI cache queries
-export function getAICache(projectId: number, filePath: string) {
-  return getDb().prepare(
-    'SELECT * FROM ai_cache WHERE project_id = ? AND file_path = ?'
-  ).get(projectId, filePath)
+// ─── AI cache queries ───
+
+export async function getAICache(projectId: number, filePath: string) {
+  return queryOne(await getDb(), 'SELECT * FROM ai_cache WHERE project_id = ? AND file_path = ?', [projectId, filePath])
 }
 
-export function setAICache(projectId: number, filePath: string, data: { summary?: string; explanation?: string; keyFunctions?: string; prerequisites?: string; relatedFiles?: string; mermaid?: string }) {
-  getDb().prepare(
+export async function setAICache(projectId: number, filePath: string, data: { summary?: string; explanation?: string; keyFunctions?: string; prerequisites?: string; relatedFiles?: string; mermaid?: string }) {
+  exec(await getDb(),
     `INSERT INTO ai_cache (project_id, file_path, summary, explanation, key_functions, prerequisites, related_files, mermaid)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT DO NOTHING`
-  ).run(projectId, filePath, data.summary || null, data.explanation || null, data.keyFunctions || null,
-    data.prerequisites || null, data.relatedFiles || null, data.mermaid || null)
-}
-
-// Clear project data before re-parse
-export function clearProjectData(projectId: number) {
-  const db = getDb()
-  db.prepare('DELETE FROM files WHERE project_id = ?').run(projectId)
-  db.prepare('DELETE FROM symbols WHERE project_id = ?').run(projectId)
-  db.prepare('DELETE FROM includes WHERE project_id = ?').run(projectId)
-  db.prepare('DELETE FROM calls WHERE project_id = ?').run(projectId)
-  db.prepare('DELETE FROM struct_deps WHERE project_id = ?').run(projectId)
-}
-
-export function insertFileParams(file: { name: string; path: string; type: string; parentPath?: string | null; content?: string | null }) {
-  return { path: file.path, name: file.name, type: file.type, parentPath: file.parentPath, content: file.content }
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [projectId, filePath, data.summary || null, data.explanation || null, data.keyFunctions || null,
+     data.prerequisites || null, data.relatedFiles || null, data.mermaid || null]
+  )
 }
