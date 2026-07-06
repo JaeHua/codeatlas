@@ -73,106 +73,48 @@ export function CodeViewer() {
   const [source, setSource] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const hoverDisposeRef = useRef<() => void>(() => {})
-  const pendingLineRef = useRef<number | null>(null)
   const decorationsRef = useRef<string[]>([])
+  const symbolsRef = useRef(symbols)
+  symbolsRef.current = symbols
+  const selectedFileRef = useRef(selectedFile)
+  selectedFileRef.current = selectedFile
 
-  // Track pending line from search navigation
-  useEffect(() => {
-    if (selectedEntity?.line) pendingLineRef.current = selectedEntity.line
-  }, [selectedEntity?.line])
-
-  // Scroll to line & highlight when source is ready
-  useEffect(() => {
-    const line = pendingLineRef.current
-    if (!line || !editorRef.current || !source) return
-    pendingLineRef.current = null
-    const ed = editorRef.current
-    ed.revealLineInCenter(line)
-    ed.setPosition({ lineNumber: line, column: 1 })
-    // Remove old decorations
-    decorationsRef.current = ed.deltaDecorations(decorationsRef.current, [{
-      range: {
-        startLineNumber: line,
-        startColumn: 1,
-        endLineNumber: line,
-        endColumn: 1,
-      },
-      options: {
-        isWholeLine: true,
-        className: 'search-highlight-line',
-        marginClassName: 'search-highlight-margin',
-      },
-    }])
-    // Fade out after 3 seconds
-    setTimeout(() => {
-      decorationsRef.current = ed.deltaDecorations(decorationsRef.current, [])
-    }, 3000)
-  }, [source])
-
-  // Hover provider for function names
-  const registerHover = useCallback(
-    (monaco: typeof import('monaco-editor')) => {
-      hoverDisposeRef.current()
-
-      const symbolMap = new Map<string, (typeof symbols)[0]>()
-      for (const s of symbols) {
-        symbolMap.set(s.name, s)
-      }
-
-      const disposable = monaco.languages.registerHoverProvider('c', {
-        provideHover: (model, position) => {
-          const word = model.getWordAtPosition(position)
-          if (!word) return null
-
-          const sym = symbolMap.get(word.word)
-          if (!sym) return null
-
-          const contents: { value: string }[] = []
-
-          if (sym.signature) {
-            contents.push({
-              value: `\`\`\`c\n${sym.signature}\n\`\`\``,
-            })
-          }
-
-          const lines: string[] = []
-
-          if (sym.description) {
-            lines.push(sym.description)
-          }
-
-          lines.push(`📁 ${sym.file}:${sym.line}`)
-
-          if (sym.kind === 'function') {
-            lines.push(`\n[查看详情 →](command:codeatlas.detail?${encodeURIComponent(JSON.stringify({ name: sym.name, file: sym.file }))})`)
-          }
-
-          return {
-            range: {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            },
-            contents: [
-              ...contents,
-              { value: lines.join('\n\n') },
-            ],
-          }
-        },
-      })
-
-      hoverDisposeRef.current = () => disposable.dispose()
-    },
-    [symbols]
-  )
-
+  // Register hover provider (only once) + navigation click handler
   const handleEditorMount: OnMount = useCallback(
     (editor, monaco) => {
       editorRef.current = editor
       monacoRef.current = monaco
-      registerHover(monaco)
+
+      // Hover provider — uses ref so always reads latest symbols
+      const disposable = monaco.languages.registerHoverProvider('c', {
+        provideHover: (model, position) => {
+          const word = model.getWordAtPosition(position)
+          if (!word) return null
+          const sym = symbolsRef.current.find((s) => s.name === word.word)
+          if (!sym) return null
+          const contents: { value: string }[] = []
+          if (sym.signature) contents.push({ value: `\`\`\`c\n${sym.signature}\n\`\`\`` })
+          const lines: string[] = []
+          if (sym.description) lines.push(sym.description)
+          lines.push(`📁 ${sym.file}:${sym.line}`)
+          if (sym.kind === 'function') {
+            lines.push(`\n[查看详情 →](command:codeatlas.detail?${encodeURIComponent(JSON.stringify({ name: sym.name, file: sym.file }))})`)
+          }
+          return { range: { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn }, contents: [...contents, { value: lines.join('\n\n') }] }
+        },
+      })
+
+      // Cmd+Click → go to definition
+      monaco.languages.registerDefinitionProvider('c', {
+        provideDefinition: (model, position) => {
+          const word = model.getWordAtPosition(position)
+          if (!word) return null
+          const sym = symbolsRef.current.find((s) => s.name === word.word)
+          if (!sym?.file) return null
+          useStore.getState().selectFileWithLine(sym.file, sym.line)
+          return null
+        },
+      })
 
       // Register right-click action for trace
       editor.addAction({
@@ -232,15 +174,8 @@ export function CodeViewer() {
         },
       })
     },
-    [selectedFile, symbols, registerHover]
+    [selectedFile, symbols]
   )
-
-  // Re-register hover when symbols or file changes
-  useEffect(() => {
-    if (monacoRef.current) {
-      registerHover(monacoRef.current)
-    }
-  }, [symbols, selectedFile, registerHover])
 
   // Command handler for hover detail links
   useEffect(() => {
@@ -387,7 +322,7 @@ export function CodeViewer() {
     <div className="h-full relative">
       <Editor
         height="100%"
-        language="c"
+        language={selectedFile?.endsWith('.s') || selectedFile?.endsWith('.S') || selectedFile?.endsWith('.asm') ? 'asm' : 'c'}
         value={source}
         theme="vs"
         beforeMount={(monaco) => {
