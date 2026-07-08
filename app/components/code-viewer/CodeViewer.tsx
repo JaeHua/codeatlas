@@ -132,7 +132,10 @@ export function CodeViewer() {
       },
     })
 
-    // Trace right-click action
+    // Track cursor position for status bar
+    editor.onDidChangeCursorPosition((e) => {
+      useStore.getState().setCursorPosition(e.position.lineNumber, e.position.column)
+    })
     editor.addAction({
       id: 'trace-function', label: '追踪执行流', contextMenuGroupId: 'navigation', contextMenuOrder: 1,
       run: (ed) => {
@@ -159,7 +162,12 @@ export function CodeViewer() {
     if (!selectedFile) { setSource(''); setLoading(false); setError(null); return }
     let cancelled = false; setLoading(true); setError(null)
     const timeoutId = setTimeout(() => { if (!cancelled) { setLoading(false); setError('加载超时') } }, 15000)
-    loadSourceCode(projectId || 0, selectedFile).then((s) => { if (!cancelled) { clearTimeout(timeoutId); setSource(s); setLoading(false) } }).catch(() => { if (!cancelled) { clearTimeout(timeoutId); setSource('// Failed to load source'); setLoading(false) } })
+    loadSourceCode(projectId || 0, selectedFile)      .then((s) => {
+        if (!cancelled) {
+          clearTimeout(timeoutId); setSource(s); setLoading(false)
+          useStore.getState().setFileInfo(s.split('\n').length, selectedFile?.match(/\.(s|S|asm)$/) ? 'x86 Assembly' : 'C')
+        }
+      }).catch(() => { if (!cancelled) { clearTimeout(timeoutId); setSource('// Failed to load source'); setLoading(false) } })
     return () => { cancelled = true; clearTimeout(timeoutId) }
   }, [selectedFile, projectId])
 

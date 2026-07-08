@@ -31,6 +31,11 @@ interface AppStore {
   openTabs: string[]
   activeTabIndex: number
 
+  cursorLine: number
+  cursorColumn: number
+  fileLineCount: number
+  fileLanguage: string
+
   favorites: string[]
   recentFiles: string[]
 
@@ -64,6 +69,8 @@ interface AppStore {
   addTab: (path: string) => void
   closeTab: (index: number) => void
   setActiveTab: (index: number) => void
+  setCursorPosition: (line: number, column: number) => void
+  setFileInfo: (lineCount: number, language: string) => void
 }
 
 export const useStore = create<AppStore>()(
@@ -94,6 +101,11 @@ export const useStore = create<AppStore>()(
 
       openTabs: [],
       activeTabIndex: 0,
+
+      cursorLine: 1,
+      cursorColumn: 1,
+      fileLineCount: 0,
+      fileLanguage: 'c',
 
       favorites: [],
       recentFiles: [],
@@ -181,6 +193,8 @@ export const useStore = create<AppStore>()(
         activeTabIndex: index,
         selectedFile: s.openTabs[index] || null,
       })),
+      setCursorPosition: (cursorLine, cursorColumn) => set({ cursorLine, cursorColumn }),
+      setFileInfo: (fileLineCount, fileLanguage) => set({ fileLineCount, fileLanguage }),
     }),
     {
       name: 'codeatlas-store',

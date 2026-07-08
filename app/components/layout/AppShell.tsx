@@ -23,6 +23,7 @@ export function AppShell({ projectId }: { projectId?: number }) {
   const {
     activeView, setActiveView, selectedFile,
     openTabs, activeTabIndex, closeTab, setActiveTab,
+    cursorLine, cursorColumn, fileLineCount, fileLanguage,
     leftWidth, rightWidth, leftCollapsed, rightCollapsed,
     setLeftWidth, setRightWidth, setLeftCollapsed, setRightCollapsed,
     setProjectId,
@@ -210,8 +211,17 @@ export function AppShell({ projectId }: { projectId?: number }) {
 
       {/* Status bar */}
       <div className="flex items-center justify-between px-3 py-1 border-stitch-t bg-[var(--card)]/50 text-[11px] text-[var(--muted-foreground)]">
-        <span>{selectedFile || 'No file selected'}</span>
-        <span>Linux Kernel 0.21 · 按 ? 查看快捷键</span>
+        <div className="flex items-center gap-4">
+          <span>{selectedFile || 'No file selected'}</span>
+          {selectedFile && (
+            <>
+              <span>Ln {cursorLine}, Col {cursorColumn}</span>
+              <span>{fileLineCount > 0 ? `${fileLineCount} 行` : ''}</span>
+              <span className="text-[10px] uppercase">{fileLanguage}</span>
+            </>
+          )}
+        </div>
+        <span>按 ? 查看快捷键</span>
       </div>
     </div>
   )
