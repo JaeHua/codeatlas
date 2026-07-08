@@ -106,18 +106,6 @@ export function CodeViewer() {
         },
       })
 
-      // Cmd+Click → go to definition
-      const defDisposable = monaco.languages.registerDefinitionProvider('c', {
-        provideDefinition: (model: editor.ITextModel, position: any) => {
-          const word = model.getWordAtPosition(position)
-          if (!word) return null
-          const sym = symbolsRef.current.find((s) => s.name === word.word)
-          if (!sym?.file) return null
-          useStore.getState().selectFileWithLine(sym.file, sym.line)
-          return null
-        },
-      })
-
       // Store cleanup
       hoverCleanupRef.current = () => {
         disposable.dispose()
