@@ -110,26 +110,66 @@ const nodeTypes = { entry: EntryNode, func: FuncNode, struct: StructNode, extFun
 
 // ───── Summary Panel ─────
 
-function FuncSummary({ funcName, symbols, calls, onClose }: { funcName: string; symbols: any[]; calls: any[]; onClose: () => void }) {
+function FuncSummary({ funcName, symbols, calls, onClose, selectFile }: { funcName: string; symbols: any[]; calls: any[]; onClose: () => void; selectFile: (f: string) => void }) {
   const sym = symbols.find((s) => s.name === funcName && s.kind === 'function')
-  const callees = [...new Set(calls.filter((c) => c.caller === funcName).map((c) => c.callee))].slice(0, 8)
-  const callers = [...new Set(calls.filter((c) => c.callee === funcName).map((c) => c.caller))].slice(0, 5)
+  const callees = [...new Set(calls.filter((c) => c.caller === funcName).map((c) => c.callee))].slice(0, 10)
+  const callers = [...new Set(calls.filter((c) => c.callee === funcName).map((c) => c.caller))].slice(0, 10)
   const fileStructs = symbols.filter((s) => s.file === sym?.file && s.kind === 'struct').map((s) => s.name)
 
+  // Group callees by file
+  const calleeMap = new Map<string, string[]>()
+  calls.filter((c) => c.caller === funcName).forEach((c) => {
+    const file = symbols.find((s) => s.name === c.callee)?.file || c.callee_file
+    if (file && file !== sym?.file) {
+      if (!calleeMap.has(file)) calleeMap.set(file, [])
+      calleeMap.get(file)!.push(c.callee)
+    }
+  })
+
+  const callerMap = new Map<string, string[]>()
+  calls.filter((c) => c.callee === funcName).forEach((c) => {
+    const file = symbols.find((s) => s.name === c.caller)?.file || c.caller_file
+    if (file && file !== sym?.file) {
+      if (!callerMap.has(file)) callerMap.set(file, [])
+      callerMap.get(file)!.push(c.caller)
+    }
+  })
+
   return (
-    <div className="absolute top-2 right-2 z-20 w-72 bg-[var(--card)]/98 backdrop-blur-xl rounded-xl border border-[var(--border)] shadow-2xl overflow-hidden animate-scale-in">
+    <div className="absolute top-2 right-2 z-20 w-80 bg-[var(--card)]/98 backdrop-blur-xl rounded-xl border border-[var(--border)] shadow-2xl overflow-hidden animate-scale-in">
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--border)]">
         <div className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-amber-400" /><span className="text-xs font-semibold text-[var(--foreground)] font-mono">{funcName}</span></div>
         <button onClick={onClose} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)]"><X className="h-3.5 w-3.5" /></button>
       </div>
-      <div className="p-3 space-y-3 max-h-[50vh] overflow-auto text-xs">
+      <div className="p-3 space-y-3 max-h-[55vh] overflow-auto text-xs">
         <div><div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">签名</div>
           <code className="text-[11px] text-[var(--foreground)]">{sym?.signature || funcName + '()'}</code>
           {sym?.file && <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{sym.file}:{sym.line}</div>}
         </div>
         {sym?.description && <div><div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">角色</div><p className="text-[var(--foreground)] leading-relaxed">{sym.description}</p></div>}
-        {callers.length > 0 && <div><div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">被谁调用</div><div className="flex flex-wrap gap-1">{callers.map((c) => <code key={c} className="text-[10px] bg-[var(--muted)] px-1.5 py-0.5 rounded text-[var(--foreground)]">{c}</code>)}</div></div>}
-        {callees.length > 0 && <div><div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">调用</div><div className="flex flex-wrap gap-1">{callees.map((c) => <code key={c} className="text-[10px] bg-[var(--muted)] px-1.5 py-0.5 rounded text-[var(--foreground)]">{c}</code>)}</div></div>}
+
+        {/* Cross-file callers */}
+        {callerMap.size > 0 && <div>
+          <div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">外部调用者</div>
+          {[...callerMap.entries()].slice(0, 6).map(([file, funcs]) => (
+            <div key={file} className="mb-1">
+              <button onClick={() => selectFile(file)} className="text-[10px] text-blue-400 hover:underline truncate block">{file.split('/').pop()}</button>
+              <div className="flex flex-wrap gap-1 ml-2">{funcs.slice(0, 4).map((f) => <code key={f} className="text-[10px] bg-[var(--muted)] px-1 rounded text-[var(--foreground)]">{f}</code>)}</div>
+            </div>
+          ))}
+        </div>}
+
+        {/* Cross-file callees */}
+        {calleeMap.size > 0 && <div>
+          <div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">调用的外部函数</div>
+          {[...calleeMap.entries()].slice(0, 6).map(([file, funcs]) => (
+            <div key={file} className="mb-1">
+              <button onClick={() => selectFile(file)} className="text-[10px] text-green-400 hover:underline truncate block">{file.split('/').pop()}</button>
+              <div className="flex flex-wrap gap-1 ml-2">{funcs.slice(0, 4).map((f) => <code key={f} className="text-[10px] bg-[var(--muted)] px-1 rounded text-[var(--foreground)]">{f}</code>)}</div>
+            </div>
+          ))}
+        </div>}
+
         {fileStructs.length > 0 && <div><div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase mb-1">关联结构体</div><div className="flex flex-wrap gap-1">{fileStructs.map((s) => <code key={s} className="text-[10px] bg-[var(--muted)] px-1.5 py-0.5 rounded text-purple-300">{s}</code>)}</div></div>}
       </div>
     </div>
@@ -319,7 +359,7 @@ export function FileGraph() {
 
       {/* Summary panel */}
       {selectedFunc && (
-        <FuncSummary funcName={selectedFunc} symbols={symbols} calls={calls} onClose={() => setSelectedFunc(null)} />
+        <FuncSummary funcName={selectedFunc} symbols={symbols} calls={calls} onClose={() => setSelectedFunc(null)} selectFile={selectFile} />
       )}
 
       {/* Legend */}

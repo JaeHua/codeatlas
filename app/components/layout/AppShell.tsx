@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useStore } from '@/app/store'
 import { FileTree } from '@/app/components/file-tree/FileTree'
+import { SymbolOutline } from '@/app/components/file-tree/SymbolOutline'
 import { CodeViewer } from '@/app/components/code-viewer/CodeViewer'
 import { FileGraph } from '@/app/components/graphs/FileGraph'
 import { ArchitectureMap } from '@/app/components/graphs/ArchitectureMap'
@@ -90,8 +91,13 @@ export function AppShell({ projectId }: { projectId?: number }) {
                 <PanelLeft className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="flex-1 overflow-hidden">
-              <FileTree />
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex-1 overflow-hidden">
+                <FileTree />
+              </div>
+              <div className="border-stitch-t">
+                <SymbolOutline />
+              </div>
             </div>
           </div>
         )}
