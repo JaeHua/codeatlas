@@ -44,7 +44,7 @@ export function SymbolOutline() {
                     onClick={() => {
                       if (!selectedFile) return
                       selectFile(selectedFile)
-                      window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: sym.line } }))
+                      window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: sym.line + 1 } }))
                     }}
                     className="flex items-center gap-1.5 w-full text-left px-3 py-1 text-xs hover:bg-[var(--accent)] transition-colors group">
                     <Icon className={cn('h-3 w-3 flex-shrink-0',
