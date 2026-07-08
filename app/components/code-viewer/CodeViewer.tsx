@@ -188,6 +188,24 @@ export function CodeViewer() {
     return () => disposable.dispose()
   }, [setSelectedEntity])
 
+  // Listen for reveal-line events (from Outline clicks)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const line = (e as CustomEvent).detail?.line
+      if (!line || !editorRef.current) return
+      const ed = editorRef.current
+      ed.revealLineInCenter(line)
+      ed.setPosition({ lineNumber: line, column: 1 })
+      decorationsRef.current = ed.deltaDecorations(decorationsRef.current, [{
+        range: { startLineNumber: line, startColumn: 1, endLineNumber: line, endColumn: 1 },
+        options: { isWholeLine: true, className: 'search-highlight-line', marginClassName: 'search-highlight-margin' },
+      }])
+      setTimeout(() => { decorationsRef.current = ed.deltaDecorations(decorationsRef.current, []) }, 3000)
+    }
+    window.addEventListener('codeatlas:reveal-line', handler)
+    return () => window.removeEventListener('codeatlas:reveal-line', handler)
+  }, [])
+
   // Load source
   useEffect(() => {
     if (!selectedFile) { setSource(''); setLoading(false); setError(null); return }

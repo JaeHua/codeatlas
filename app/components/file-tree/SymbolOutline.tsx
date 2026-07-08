@@ -38,8 +38,9 @@ export function SymbolOutline() {
         <span className="text-[10px] text-[var(--muted-foreground)]/50 ml-auto">{fileSymbols.length}</span>
       </button>
       {!collapsed && (
-        <ScrollArea className="max-h-[200px]">
-          <div className="pb-2">
+        <div className="overflow-hidden">
+          <ScrollArea className="max-h-[200px]">
+            <div className="pb-2">
             {fileSymbols.length === 0 ? (
               <div className="px-3 py-2 text-[11px] text-[var(--muted-foreground)] text-center">无符号数据</div>
             ) : (
@@ -50,8 +51,9 @@ export function SymbolOutline() {
                     key={`${sym.kind}-${sym.name}-${sym.line}`}
                     onClick={() => {
                       if (!selectedFile) return
-                      setSelectedEntity({ type: 'function', path: selectedFile, name: sym.name, line: sym.line })
                       selectFile(selectedFile)
+                      // Dispatch to scroll editor to line
+                      window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: sym.line } }))
                     }}
                     className="flex items-center gap-1.5 w-full text-left px-3 py-1 text-xs hover:bg-[var(--accent)] transition-colors group"
                   >
@@ -69,6 +71,7 @@ export function SymbolOutline() {
             )}
           </div>
         </ScrollArea>
+        </div>
       )}
     </div>
   )
