@@ -76,7 +76,7 @@ function getLanguage(filename: string | null): string {
   const name = filename.toLowerCase()
   const map: Record<string, string> = {
     c: 'c', h: 'c',
-    s: 'asm', S: 'asm', asm: 'asm',
+    s: 'mips', S: 'mips', asm: 'mips',
     cpp: 'cpp', cc: 'cpp', cxx: 'cpp', hpp: 'cpp',
     py: 'python', pyw: 'python',
     java: 'java',
