@@ -37,6 +37,9 @@ export function AIPanel() {
   const [explainCode, setExplainCode] = useState('')
   const [explainText, setExplainText] = useState('')
   const [explainStreaming, setExplainStreaming] = useState(false)
+  const [explainFollowUp, setExplainFollowUp] = useState<{ q: string; a: string }[]>([])
+  const [followUpQuery, setFollowUpQuery] = useState('')
+  const [followUpSending, setFollowUpSending] = useState(false)
 
   useEffect(() => {
     const path = selectedEntity?.type === 'file' ? selectedEntity.path : null
@@ -95,10 +98,12 @@ export function AIPanel() {
         context: string
       }
 
-      setExplainMode(true)
-      setExplainCode(detail.selectedText)
-      setExplainText('')
-      setExplainStreaming(true)
+    setExplainMode(true)
+    setExplainCode(detail.selectedText)
+    setExplainText('')
+    setExplainStreaming(true)
+    setExplainFollowUp([])
+    setFollowUpQuery('')
 
       abortRef.current?.abort()
       const controller = new AbortController()
@@ -188,6 +193,25 @@ export function AIPanel() {
   }
 
   // Explain mode overlay
+  const handleFollowUp = async () => {
+    if (!followUpQuery.trim() || followUpSending) return
+    const q = followUpQuery.trim()
+    setFollowUpQuery('')
+    setExplainFollowUp((prev) => [...prev, { q, a: '' }])
+    setFollowUpSending(true)
+    const s = JSON.parse(localStorage.getItem('codeatlas-settings') || '{}')
+    if (!s?.state?.apiKey) { setExplainFollowUp((prev) => prev.map((it, i) => i === prev.length - 1 ? { ...it, a: '请先配置 API Key' } : it)); setFollowUpSending(false); return }
+    try {
+      const res = await fetch(`${s.state.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.state.apiKey}` },
+        body: JSON.stringify({ model: s.state.model || 'deepseek-chat', messages: [{ role: 'system', content: `之前解释的代码:\n\`\`\`\n${explainCode}\n\`\`\`\n\n解释: ${explainText.slice(0, 1000)}\n\n用户有后续问题。用中文简洁回答。` }, { role: 'user', content: q }], temperature: 0.3, max_tokens: 1024 }),
+      })
+      const d = await res.json()
+      setExplainFollowUp((prev) => prev.map((it, i) => i === prev.length - 1 ? { ...it, a: d.choices?.[0]?.message?.content || '无响应' } : it))
+    } catch { setExplainFollowUp((prev) => prev.map((it, i) => i === prev.length - 1 ? { ...it, a: '请求失败' } : it)) }
+    setFollowUpSending(false)
+  }
+
   if (explainMode) {
     return (
       <div className="flex flex-col h-full">
@@ -237,6 +261,36 @@ export function AIPanel() {
                     <span className="text-xs">等待解释...</span>
                   )}
                 </div>
+            </div>
+
+            {/* Follow-up Q&A */}
+            {explainFollowUp.map((item, i) => (
+              <div key={i} className="space-y-1.5">
+                <div className="bg-[var(--primary)]/10 rounded-lg p-2.5 border border-[var(--primary)]/20">
+                  <div className="text-[10px] text-[var(--muted-foreground)] mb-1">追问</div>
+                  <p className="text-xs text-[var(--foreground)]">{item.q}</p>
+                </div>
+                {item.a ? (
+                  <div className="bg-[var(--card)] rounded-lg p-2.5 border border-[var(--border)]">
+                    <MarkdownRenderer content={item.a} />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] px-2">
+                    <Loader2 className="h-3 w-3 animate-spin" /> 生成中...
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Follow-up input */}
+            <div className="flex gap-1.5">
+              <Input value={followUpQuery} onChange={(e) => setFollowUpQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleFollowUp() }}
+                placeholder="继续追问..." disabled={followUpSending}
+                className="h-8 text-xs bg-[var(--muted)]/50 border-[var(--border)]" />
+              <Button size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleFollowUp} disabled={followUpSending || !followUpQuery.trim()}>
+                <Send className="h-3.5 w-3.5" />
+              </Button>
             </div>
           </div>
         </ScrollArea>

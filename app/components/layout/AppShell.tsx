@@ -11,7 +11,7 @@ import { SearchBar } from '@/app/components/layout/SearchBar'
 import { TracePanel } from '@/app/components/trace/TracePanel'
 import { KeyboardShortcuts } from '@/app/components/layout/KeyboardShortcuts'
 import { cn } from '@/lib/utils'
-import { PanelLeft, PanelRight, Code, Share2, Map } from 'lucide-react'
+import { PanelLeft, PanelRight, Code, Share2, Map, X } from 'lucide-react'
 
 const tabs = [
   { id: 'code' as const, label: '代码', icon: Code },
@@ -22,6 +22,7 @@ const tabs = [
 export function AppShell({ projectId }: { projectId?: number }) {
   const {
     activeView, setActiveView, selectedFile,
+    openTabs, activeTabIndex, closeTab, setActiveTab,
     leftWidth, rightWidth, leftCollapsed, rightCollapsed,
     setLeftWidth, setRightWidth, setLeftCollapsed, setRightCollapsed,
     setProjectId,
@@ -135,6 +136,29 @@ export function AppShell({ projectId }: { projectId?: number }) {
               </button>
             ))}
           </div>
+          {/* File tabs bar */}
+          {openTabs.length > 0 && (
+            <div className="flex items-center border-b border-[var(--border)] bg-[var(--card)]/30 overflow-x-auto">
+              {openTabs.map((tab, i) => (
+                <div
+                  key={tab}
+                  onClick={() => setActiveTab(i)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer border-r border-[var(--border)] whitespace-nowrap transition-colors group',
+                    i === activeTabIndex ? 'bg-[var(--card)] text-[var(--foreground)] border-b-2 border-b-[var(--primary)] -mb-[1px]' : 'text-[var(--muted-foreground)] hover:bg-[var(--accent)]'
+                  )}
+                >
+                  <span className="font-mono max-w-[120px] truncate">{tab.split('/').pop()}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeTab(i) }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex-1 overflow-hidden animate-fabric-in" key={activeView}>
             {activeView === 'code' && <CodeViewer />}
             {activeView === 'graph' && <FileGraph />}

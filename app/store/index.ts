@@ -28,6 +28,9 @@ interface AppStore {
   leftCollapsed: boolean
   rightCollapsed: boolean
 
+  openTabs: string[]
+  activeTabIndex: number
+
   favorites: string[]
   recentFiles: string[]
 
@@ -58,6 +61,9 @@ interface AppStore {
   addFavorite: (path: string) => void
   removeFavorite: (path: string) => void
   removeRecent: (path: string) => void
+  addTab: (path: string) => void
+  closeTab: (index: number) => void
+  setActiveTab: (index: number) => void
 }
 
 export const useStore = create<AppStore>()(
@@ -86,6 +92,9 @@ export const useStore = create<AppStore>()(
       leftCollapsed: false,
       rightCollapsed: false,
 
+      openTabs: [],
+      activeTabIndex: 0,
+
       favorites: [],
       recentFiles: [],
 
@@ -104,18 +113,25 @@ export const useStore = create<AppStore>()(
             : [...s.expandedDirs, path],
         })),
 
-  selectFile: (path) =>
-    set((s) => {
-      const recent = path && !s.recentFiles.includes(path)
-        ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
-        : s.recentFiles
-      return {
-        selectedFile: path,
-        activeView: 'code',
-        selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path } : null,
-        recentFiles: recent,
-      }
-    }),
+      selectFile: (path) =>
+        set((s) => {
+          const recent = path && !s.recentFiles.includes(path)
+            ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
+            : s.recentFiles
+          // Add to tabs if not already there
+          const tabs = s.openTabs.includes(path || '')
+            ? s.openTabs
+            : [...s.openTabs, path].filter(Boolean) as string[]
+          const idx = tabs.indexOf(path || '')
+          return {
+            selectedFile: path,
+            activeView: 'code',
+            selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path } : null,
+            recentFiles: recent,
+            openTabs: tabs,
+            activeTabIndex: idx >= 0 ? idx : tabs.length - 1,
+          }
+        }),
   selectFileWithLine: (path: string | null, line?: number) =>
     set((s) => {
       const recent = path && !s.recentFiles.includes(path)
@@ -149,6 +165,21 @@ export const useStore = create<AppStore>()(
       })),
       removeRecent: (path) => set((s) => ({
         recentFiles: s.recentFiles.filter((f) => f !== path),
+      })),
+
+      addTab: (path) => set((s) => {
+        const idx = s.openTabs.indexOf(path)
+        if (idx >= 0) return { activeTabIndex: idx }
+        return { openTabs: [...s.openTabs, path], activeTabIndex: s.openTabs.length }
+      }),
+      closeTab: (index) => set((s) => {
+        const newTabs = s.openTabs.filter((_, i) => i !== index)
+        const newIdx = Math.min(s.activeTabIndex, newTabs.length - 1)
+        return { openTabs: newTabs, activeTabIndex: newIdx, selectedFile: newTabs[newIdx] || null }
+      }),
+      setActiveTab: (index) => set((s) => ({
+        activeTabIndex: index,
+        selectedFile: s.openTabs[index] || null,
       })),
     }),
     {
