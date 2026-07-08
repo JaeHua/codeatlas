@@ -11,6 +11,7 @@ function ensureInit() {
     startOnLoad: false,
     theme: 'neutral',
     securityLevel: 'loose',
+    suppressErrorRendering: true,
     themeVariables: {
       primaryColor: '#c17e60', primaryTextColor: '#3d3629', primaryBorderColor: '#d4c9b5',
       lineColor: '#8c8273', secondaryColor: '#d4c9b5', tertiaryColor: '#e8dcc8',
@@ -30,34 +31,16 @@ export function MermaidDiagram({ chart }: { chart: string }) {
     let cancelled = false
 
     async function render() {
-      let sanitized = chart
-        // Wrap [...] labels in quotes to escape special chars
-        .replace(/\[([^\]]+)\]/g, (_, text) => {
-          if (text.startsWith('"') && text.endsWith('"')) return `[${text}]`
-          return `["${text.replace(/;/g, '&#59;').replace(/</g, '&#lt;').replace(/>/g, '&#gt;')}"]`
-        })
-        // Handle {...} diamond nodes — keep unchanged (Mermaid handles content fine)
-        // Only sanitize (...) rounded rect nodes that are NOT inside brackets
-        .replace(/\(([^)\]]+)\)/g, (_, text) => {
-          if (text.startsWith('"') && text.endsWith('"')) return `(${text})`
-          return `("${text.replace(/;/g, '&#59;')}")`
-        })
-        // Same for (...) labels
-        .replace(/\(([^)]+)\)/g, (_, text) => {
-          if (text.startsWith('"') && text.endsWith('"')) return `(${text})`
-          return `("${text}")`
-        })
-
-      // Try to render
       try {
-        const { svg: rendered } = await mermaid.render(`${id}-${Date.now()}`, sanitized)
+        const { svg: rendered } = await mermaid.render(`${id}-${Date.now()}`, chart)
         if (!cancelled) { setSvg(rendered); setError(false) }
         return
-      } catch { /* try raw next */ }
+      } catch {}
 
-      // Fallback: try raw without sanitization
+      // Try with semicolons escaped inside brackets only
       try {
-        const { svg: rendered } = await mermaid.render(`${id}-fallback-${Date.now()}`, chart)
+        const escaped = chart.replace(/\[([^\]]*);([^\]]*)\]/g, '["$1&#59;$2"]')
+        const { svg: rendered } = await mermaid.render(`${id}-2-${Date.now()}`, escaped)
         if (!cancelled) { setSvg(rendered); setError(false) }
       } catch {
         if (!cancelled) setError(true)

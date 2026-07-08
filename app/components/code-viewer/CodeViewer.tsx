@@ -74,20 +74,22 @@ export function CodeViewer() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const decorationsRef = useRef<string[]>([])
+  const hoverCleanupRef = useRef<(() => void) | null>(null)
   const symbolsRef = useRef(symbols)
   symbolsRef.current = symbols
-  const selectedFileRef = useRef(selectedFile)
-  selectedFileRef.current = selectedFile
 
-  // Register hover provider (only once) + navigation click handler
   const handleEditorMount: OnMount = useCallback(
     (editor, monaco) => {
       editorRef.current = editor
       monacoRef.current = monaco
 
+      // Cleanup any previous hover provider (prevents duplicates on remount)
+      hoverCleanupRef.current?.()
+      hoverCleanupRef.current = null
+
       // Hover provider — uses ref so always reads latest symbols
       const disposable = monaco.languages.registerHoverProvider('c', {
-        provideHover: (model, position) => {
+        provideHover: (model: editor.ITextModel, position: any) => {
           const word = model.getWordAtPosition(position)
           if (!word) return null
           const sym = symbolsRef.current.find((s) => s.name === word.word)
@@ -105,8 +107,8 @@ export function CodeViewer() {
       })
 
       // Cmd+Click → go to definition
-      monaco.languages.registerDefinitionProvider('c', {
-        provideDefinition: (model, position) => {
+      const defDisposable = monaco.languages.registerDefinitionProvider('c', {
+        provideDefinition: (model: editor.ITextModel, position: any) => {
           const word = model.getWordAtPosition(position)
           if (!word) return null
           const sym = symbolsRef.current.find((s) => s.name === word.word)
@@ -115,6 +117,12 @@ export function CodeViewer() {
           return null
         },
       })
+
+      // Store cleanup
+      hoverCleanupRef.current = () => {
+        disposable.dispose()
+        defDisposable.dispose()
+      }
 
       // Register right-click action for trace
       editor.addAction({
