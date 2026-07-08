@@ -1,25 +1,12 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Geist, Geist_Mono } from "next/font/google";
 import { ClientLayout } from "@/app/components/layout/ClientLayout";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "CodeAtlas — Interactive Source Code Map",
   description: "Explore source code like Google Maps.",
-  icons: {
-    icon: '/favicon.svg',
-  },
+  icons: { icon: '/favicon.svg' },
 };
 
 const THEME_SCRIPT = `
@@ -38,9 +25,7 @@ const THEME_SCRIPT = `
     var themeName = state.currentTheme;
     var preset = presets[themeName];
     var vars = preset ? preset : presets.fabric;
-    if (state.customColors) {
-      for (var k in state.customColors) vars[k] = state.customColors[k];
-    }
+    if (state.customColors) { for (var k in state.customColors) vars[k] = state.customColors[k]; }
     for (var k in vars) document.documentElement.style.setProperty(k, vars[k]);
   } catch(e) {}
 })();
@@ -48,19 +33,11 @@ const THEME_SCRIPT = `
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
-        <Script id="theme-init" strategy="beforeInteractive">
-          {THEME_SCRIPT}
-        </Script>
+        <Script id="theme-init" strategy="beforeInteractive">{THEME_SCRIPT}</Script>
         <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
