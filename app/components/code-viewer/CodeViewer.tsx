@@ -121,8 +121,21 @@ export function CodeViewer() {
       // Store cleanup
       hoverCleanupRef.current = () => {
         disposable.dispose()
-        defDisposable.dispose()
       }
+
+      // Cmd+Click → go to definition (via mouse event, not DefinitionProvider)
+      editor.onMouseDown((e) => {
+        if (!e.event.metaKey && !e.event.ctrlKey) return
+        const position = e.target.position
+        if (!position) return
+        const word = editor.getModel()?.getWordAtPosition(position)
+        if (!word) return
+        const sym = symbolsRef.current.find((s) => s.name === word.word && (s.kind === 'function' || s.kind === 'struct'))
+        if (sym?.file) {
+          e.event.preventDefault()
+          useStore.getState().selectFileWithLine(sym.file, sym.line)
+        }
+      })
 
       // Register right-click action for trace
       editor.addAction({
