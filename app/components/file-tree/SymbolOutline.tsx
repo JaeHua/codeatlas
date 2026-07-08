@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useStore } from '@/app/store'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
@@ -10,9 +10,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   function: FunctionSquare, struct: Box, macro: Hash, typedef: Hash,
 }
 
-export function SymbolOutline() {
+export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { symbols, selectedFile, selectFile } = useStore()
-  const [collapsed, setCollapsed] = useState(false)
 
   const fileSymbols = useMemo(() => {
     if (!selectedFile) return []
@@ -24,15 +23,15 @@ export function SymbolOutline() {
 
   return (
     <div className="flex flex-col">
-      <button onClick={() => setCollapsed(!collapsed)}
+      <button onClick={onToggle}
         className="flex items-center gap-1.5 px-3 py-2 hover:bg-[var(--accent)]/50 transition-colors w-full text-left">
         <ChevronRight className={cn('h-3 w-3 text-[var(--muted-foreground)] transition-transform', !collapsed && 'rotate-90')} />
         <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Outline</span>
         <span className="text-[10px] text-[var(--muted-foreground)]/50 ml-auto">{fileSymbols.length}</span>
       </button>
       {!collapsed && (
-        <div className="overflow-hidden">
-          <ScrollArea className="max-h-[200px]">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full">
             <div className="pb-2">
               {fileSymbols.length === 0 && (
                 <div className="px-3 py-2 text-[11px] text-[var(--muted-foreground)] text-center">无符号数据</div>
@@ -56,7 +55,7 @@ export function SymbolOutline() {
                 )
               })}
             </div>
-          </ScrollArea>
+            </ScrollArea>
         </div>
       )}
     </div>

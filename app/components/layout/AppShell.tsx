@@ -30,6 +30,10 @@ export function AppShell({ projectId }: { projectId?: number }) {
     setProjectId,
   } = useStore()
   const [projectName, setProjectName] = useState('')
+  const [outlineCollapsed, setOutlineCollapsed] = useState(false)
+  const [outlineHeight, setOutlineHeight] = useState(180)
+  const [dragOutline, setDragOutline] = useState(false)
+  const leftRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (projectId) {
@@ -74,6 +78,24 @@ export function AppShell({ projectId }: { projectId?: number }) {
     }
   }, [dragging, setLeftWidth, setRightWidth])
 
+  // Outline resize drag
+  useEffect(() => {
+    if (!dragOutline) return
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!leftRef.current) return
+      const rect = leftRef.current.getBoundingClientRect()
+      const h = Math.round(Math.max(80, Math.min(400, rect.bottom - e.clientY)))
+      setOutlineHeight(h)
+    }
+    const handleMouseUp = () => setDragOutline(false)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [dragOutline])
+
   return (
     <div className="flex flex-col h-screen relative z-10 bg-[var(--background)] text-[var(--foreground)]">
       <KeyboardShortcuts />
@@ -81,7 +103,7 @@ export function AppShell({ projectId }: { projectId?: number }) {
       <div ref={containerRef} className={cn('flex flex-1 overflow-hidden', dragging && 'select-none')}>
         {/* Left panel */}
         {!leftCollapsed && (
-          <div style={{ width: leftWidth }} className="flex-shrink-0 border-stitch-r flex flex-col transition-[width] duration-200 bg-white/30">
+          <div ref={leftRef} style={{ width: leftWidth }} className="flex-shrink-0 border-stitch-r flex flex-col transition-[width] duration-200 bg-white/30">
             <div className="flex items-center justify-between px-3 py-2 border-stitch-b">
               <span className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Explorer</span>
               <button
@@ -95,8 +117,13 @@ export function AppShell({ projectId }: { projectId?: number }) {
               <div className="flex-1 overflow-hidden">
                 <FileTree />
               </div>
-              <div className="border-stitch-t">
-                <SymbolOutline />
+              {/* Resize handle */}
+              <div
+                className="h-1 cursor-row-resize hover:bg-[var(--primary)]/50 active:bg-[var(--primary)] flex-shrink-0 transition-colors"
+                onMouseDown={() => setDragOutline(true)}
+              />
+              <div className="border-stitch-t" style={{ height: outlineHeight }}>
+                <SymbolOutline collapsed={outlineCollapsed} onToggle={() => setOutlineCollapsed(!outlineCollapsed)} />
               </div>
             </div>
           </div>
