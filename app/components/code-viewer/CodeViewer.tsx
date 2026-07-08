@@ -70,6 +70,37 @@ function ensureHoverProvider(monaco: any) {
   })
 }
 
+function getLanguage(filename: string | null): string {
+  if (!filename) return 'plaintext'
+  const ext = filename.split('.').pop()?.toLowerCase() || ''
+  const name = filename.toLowerCase()
+  const map: Record<string, string> = {
+    c: 'c', h: 'c',
+    s: 'asm', S: 'asm', asm: 'asm',
+    cpp: 'cpp', cc: 'cpp', cxx: 'cpp', hpp: 'cpp',
+    py: 'python', pyw: 'python',
+    java: 'java',
+    js: 'javascript', jsx: 'javascript', mjs: 'javascript',
+    ts: 'typescript', tsx: 'typescript',
+    go: 'go', rs: 'rust', rb: 'ruby',
+    sh: 'shell', bash: 'shell', zsh: 'shell',
+    pl: 'perl', pm: 'perl', php: 'php',
+    swift: 'swift', kt: 'kotlin', scala: 'scala',
+    lua: 'lua', r: 'r', dart: 'dart',
+    sql: 'sql', json: 'json',
+    xml: 'xml', html: 'html', htm: 'html',
+    css: 'css', scss: 'scss', less: 'less',
+    yaml: 'yaml', yml: 'yaml', toml: 'ini',
+    md: 'markdown', markdown: 'markdown',
+    diff: 'diff', patch: 'diff',
+    dockerfile: 'dockerfile',
+    ps1: 'powershell', bat: 'bat',
+    ini: 'ini', cfg: 'ini', conf: 'ini',
+    makefile: 'plaintext',
+  }
+  return map[ext] || map[name] || 'plaintext'
+}
+
 export function CodeViewer() {
   const theme = useTheme()
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
@@ -179,7 +210,7 @@ export function CodeViewer() {
     <div className="h-full">
       <Editor
         height="100%"
-        language={selectedFile?.endsWith('.s') || selectedFile?.endsWith('.S') || selectedFile?.endsWith('.asm') ? 'asm' : 'c'}
+        language={getLanguage(selectedFile)}
         value={source}
         theme="vs"
         beforeMount={(monaco) => { const t = theme.getTheme(); monaco.editor.defineTheme('dynamic-theme', buildMonacoTheme(t.variables as Record<string, string>)); ensureHoverProvider(monaco) }}
