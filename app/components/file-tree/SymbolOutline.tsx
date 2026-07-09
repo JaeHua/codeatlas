@@ -25,7 +25,7 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
   }, [symbols, selectedFile])
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <button onClick={onToggle}
         className="flex items-center gap-1.5 px-3 py-2 hover:bg-[var(--accent)]/50 transition-colors w-full text-left">
         <ChevronRight className={cn('h-3 w-3 text-[var(--muted-foreground)] transition-transform', !collapsed && 'rotate-90')} />
