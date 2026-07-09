@@ -8,7 +8,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { cn } from '@/lib/utils'
-import { X, Star } from 'lucide-react'
+import { X, Star, Loader2, Sparkles } from 'lucide-react'
 
 // ───── Nodes ─────
 
@@ -72,6 +72,23 @@ export function FileGraph() {
   const { selectedFile, symbols, calls, selectFile, setSelectedEntity } = useStore()
   const [selectedFunc, setSelectedFunc] = useState<string | null>(null)
   const [expandedFuncs, setExpandedFuncs] = useState<Set<string>>(new Set())
+  const [aiFlow, setAiFlow] = useState<any>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
+  const fetchAIFlow = async () => {
+    if (!selectedFile || !projectId) return
+    const s = JSON.parse(localStorage.getItem('codeatlas-settings') || '{}')
+    if (!s?.state?.apiKey) return
+    setAiLoading(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/ai-callflow`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath: selectedFile, apiKey: s.state.apiKey, baseUrl: s.state.baseUrl || 'https://api.deepseek.com', model: s.state.model || 'deepseek-chat' }),
+      })
+      if (res.ok) setAiFlow(await res.json())
+    } catch {}
+    setAiLoading(false)
+  }
 
   useEffect(() => {
     if (selectedFile) {
@@ -165,11 +182,27 @@ export function FileGraph() {
         <FuncSummary funcName={selectedFunc} symbols={symbols} calls={calls} onClose={() => setSelectedFunc(null)} />
       )}
 
+      {/* AI generate button */}
+      <div className="absolute top-2 right-2 z-10">
+        <button onClick={fetchAIFlow} disabled={aiLoading}
+          className="px-2.5 py-1 rounded text-[10px] border border-[var(--border)] bg-[var(--card)]/90 hover:bg-[var(--accent)] transition-all duration-200 flex items-center gap-1">
+          {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 text-amber-400" />}
+          AI 生成调用图
+        </button>
+      </div>
+
+      {/* AI flow result */}
+      {aiFlow?.fileSummary && (
+        <div className="absolute top-10 right-2 z-10 max-w-xs bg-[var(--card)]/98 backdrop-blur-xl rounded-xl border border-[var(--border)] shadow-2xl p-3 text-xs">
+          <p className="text-[var(--foreground)] leading-relaxed">{aiFlow.fileSummary}</p>
+        </div>
+      )}
+
       <div className="absolute bottom-2 left-2 z-10 bg-[var(--card)]/95 rounded-lg p-2 border border-[var(--border)] flex gap-3 text-[9px]">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#1e3a5f] border border-[#f59e0b]" />文件</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-[#0f2a1a] border border-[#22c55e]" />函数</span>
         <span className="flex items-center gap-1"><span className="w-3 border-t border-dashed border-amber-500" />调用</span>
-        <span className="flex items-center gap-1">点击展开/折叠 | 双击看详情</span>
+        <span className="flex items-center gap-1">点击展开/折叠</span>
       </div>
 
       <ReactFlow
