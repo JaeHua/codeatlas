@@ -127,15 +127,15 @@ async function main() {
       functionDefs.push({ name, file: rel, line: content.slice(0, fm.index).split('\n').length, sig: fm[0].replace(/\s+/g, ' ').trim().slice(0, 200) })
     }
 
-    for (const m of stripped.matchAll(/struct\s+(\w+)\s*\{/g)) {
+    for (const m of content.matchAll(/struct\s+(\w+)\s*\{/g)) {
       exec_stmt(isym, [projectId, m[1], 'struct', rel, content.slice(0, m.index).split('\n').length, null])
     }
 
-    for (const m of stripped.matchAll(/#define\s+([A-Z_][A-Z_0-9]*)\b/g)) {
+    for (const m of content.matchAll(/#define\s+([A-Z_][A-Z_0-9]*)\b/g)) {
       exec_stmt(isym, [projectId, m[1], 'macro', rel, content.slice(0, m.index).split('\n').length, null])
     }
 
-    for (const m of stripped.matchAll(/typedef\s+.*\s+(\w+)\s*;/g)) {
+    for (const m of content.matchAll(/typedef\s+.*\s+(\w+)\s*;/g)) {
       const name = m[1]
       if (name === 'struct' || name === 'enum' || name === 'union') continue
       exec_stmt(isym, [projectId, name, 'typedef', rel, content.slice(0, m.index).split('\n').length, null])

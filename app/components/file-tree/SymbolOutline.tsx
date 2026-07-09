@@ -50,8 +50,8 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
                     <button key={`${sym.kind}-${sym.name}-${sym.line}`}
                       onClick={() => {
                         if (!selectedFile) return
-                        selectFile(selectedFile)
-                        window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: sym.line } }))
+                      selectFile(selectedFile)
+                      window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: sym.line + 1 } }))
                       }}
                       className="flex items-center gap-1.5 w-full text-left px-5 py-1 text-xs hover:bg-[var(--accent)] transition-colors group">
                       <span className={cn('font-mono truncate flex-1', group.color.replace('text-', 'text-') + '/80')}>{sym.name}</span>
