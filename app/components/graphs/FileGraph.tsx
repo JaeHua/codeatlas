@@ -96,10 +96,46 @@ export function FileGraph() {
       setExpandedFuncs(new Set(funcs.filter((f) => calls.some((c) => c.caller === f.name)).map((f) => f.name)))
     }
     setSelectedFunc(null)
+    setAiFlow(null)
   }, [selectedFile, symbols, calls])
 
   const { nodes, edges } = useMemo(() => {
     if (!selectedFile) return { nodes: [], edges: [] }
+
+    // AI-generated flow — use AI data if available
+    if (aiFlow?.nodes?.length > 0) {
+      const ns: Node[] = []
+      const es: Edge[] = []
+      const aiNodes = aiFlow.nodes as any[]
+      const aiEdges = (aiFlow.edges || []) as any[]
+      const groups = (aiFlow.groups || []) as any[]
+
+      // Layout: spread vertically by importance
+      aiNodes.sort((a: any, b: any) => (b.importance || 3) - (a.importance || 3))
+      aiNodes.forEach((n: any, i: number) => {
+        const x = n.isEntry ? 30 : 220 + ((Math.floor(i / 8)) * 200)
+        const y = n.isEntry ? 50 + (i * 120) : 30 + ((i % 8) * 70)
+        ns.push({
+          id: n.id, type: n.isEntry ? 'root' : 'func',
+          position: { x, y },
+          data: { label: n.label || n.id, desc: n.desc, isEntry: n.isEntry },
+        })
+      })
+
+      aiEdges.forEach((e: any) => {
+        es.push({
+          id: `${e.from}-${e.to}`, source: e.from, target: e.to,
+          style: { stroke: '#d97706', strokeWidth: 1, strokeDasharray: '4 3' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#d97706', width: 10, height: 10 },
+          type: 'smoothstep',
+          label: e.desc,
+          labelStyle: { fontSize: 9, fill: '#a0a0a0' },
+          labelBgStyle: { fill: '#1a1a1a', fillOpacity: 0.8 },
+        })
+      })
+
+      return { nodes: ns, edges: es }
+    }
 
     const fileSymbols = symbols.filter((s) => s.file === selectedFile)
     const funcs = fileSymbols.filter((s) => s.kind === 'function')
@@ -140,7 +176,7 @@ export function FileGraph() {
     })
 
     return { nodes: ns, edges: es }
-  }, [selectedFile, symbols, calls, expandedFuncs])
+  }, [selectedFile, symbols, calls, expandedFuncs, aiFlow])
 
   const displayNodes = nodes
   const displayEdges = edges
