@@ -7,7 +7,7 @@ import { chatCompletion, chatCompletionStream } from '@/app/lib/ai-api'
 import { useSettings } from '@/app/store/settings'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Loader2, FileText, Hash, BookOpen, GitBranch, MessageCircle, ExternalLink, Send, Sparkles, AlertTriangle, X, Settings } from 'lucide-react'
 import { MermaidDiagram } from './MermaidDiagram'
@@ -284,10 +284,10 @@ export function AIPanel() {
 
             {/* Follow-up input */}
             <div className="flex gap-1.5">
-              <Input value={followUpQuery} onChange={(e) => setFollowUpQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleFollowUp() }}
-                placeholder="继续追问..." disabled={followUpSending}
-                className="h-8 text-xs bg-[var(--muted)]/50 border-[var(--border)]" />
+              <Textarea value={followUpQuery} onChange={(e) => setFollowUpQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFollowUp() } }}
+                placeholder="继续追问... (Shift+Enter 换行)" disabled={followUpSending}
+                className="min-h-[32px] max-h-[100px] text-xs resize-none bg-[var(--muted)]/50 border-[var(--border)]" rows={1} />
               <Button size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleFollowUp} disabled={followUpSending || !followUpQuery.trim()}>
                 <Send className="h-3.5 w-3.5" />
               </Button>
@@ -495,7 +495,7 @@ export function AIPanel() {
           </div>
         )}
         <div className="flex gap-1.5" ref={scrollRef}>
-          <Input
+          <Textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -504,9 +504,10 @@ export function AIPanel() {
                 handleSend()
               }
             }}
-            placeholder="针对该文件向 AI 提问..."
+            placeholder="针对该文件向 AI 提问... (Shift+Enter 换行)"
             disabled={sending}
-            className="h-8 text-xs bg-[var(--muted)]/50 border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/70"
+            className="min-h-[32px] max-h-[100px] text-xs resize-none bg-[var(--muted)]/50 border-[var(--border)]"
+            rows={1}
           />
           <Button
             size="icon"
