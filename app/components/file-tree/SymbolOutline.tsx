@@ -33,8 +33,9 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
         <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Outline</span>
       </button>
       {!collapsed && (
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="pb-2">
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="pb-2">
               {grouped.length === 0 && (
                 <div className="px-3 py-2 text-[11px] text-[var(--muted-foreground)] text-center">无符号数据</div>
               )}
@@ -63,6 +64,7 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
               ))}
             </div>
           </ScrollArea>
+        </div>
       )}
     </div>
   )
