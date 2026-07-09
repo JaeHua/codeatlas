@@ -69,7 +69,7 @@ function FuncSummary({ funcName, symbols, calls, onClose }: { funcName: string; 
 // ───── Main ─────
 
 export function FileGraph() {
-  const { selectedFile, symbols, calls, selectFile, setSelectedEntity } = useStore()
+  const { selectedFile, symbols, calls, selectFile, setSelectedEntity, projectId } = useStore()
   const [selectedFunc, setSelectedFunc] = useState<string | null>(null)
   const [expandedFuncs, setExpandedFuncs] = useState<Set<string>>(new Set())
   const [aiFlow, setAiFlow] = useState<any>(null)
