@@ -185,8 +185,19 @@ export function FileGraph() {
   const [storylineFunc, setStorylineFunc] = useState<string | null>(null)
   const [selectedFunc, setSelectedFunc] = useState<string | null>(null)
   const [focusNode, setFocusNode] = useState<string | null>(null)
-  const [treeMode, setTreeMode] = useState(false)
+  const [treeMode, setTreeMode] = useState(true)
   const [expandedFuncs, setExpandedFuncs] = useState<Set<string>>(new Set())
+
+  // Auto-expand all file functions on tree mode or file change
+  useEffect(() => {
+    if (treeMode && selectedFile) {
+      const funcs = symbols.filter((s) => s.file === selectedFile && s.kind === 'function')
+      setExpandedFuncs(new Set(funcs.filter((f) => {
+        const hasCallees = calls.some((c) => c.caller === f.name)
+        return hasCallees
+      }).map((f) => f.name)))
+    }
+  }, [selectedFile, treeMode, symbols, calls])
 
   useEffect(() => { setSelectedFunc(null); setStorylineFunc(null) }, [selectedFile])
 
@@ -394,6 +405,12 @@ export function FileGraph() {
 
       {/* Toolbar */}
       <div className="absolute top-2 left-2 z-10 flex gap-2">
+        <button onClick={() => { setTreeMode(true); setStorylineMode(false) }}
+          className={cn('px-2.5 py-1 rounded text-[10px] border transition-all duration-200',
+            treeMode ? 'bg-amber-600/20 border-amber-800/50 text-amber-300' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50'
+          )}>
+          🌲 调用树
+        </button>
         <button onClick={() => setShowAll(!showAll)}
           className={cn('px-2.5 py-1 rounded text-[10px] border transition-all duration-200',
             showAll ? 'bg-blue-600/20 border-blue-800/50 text-blue-300' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50'
