@@ -33,7 +33,7 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
         <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Outline</span>
       </button>
       {!collapsed && (
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden" tabIndex={-1}>
           <ScrollArea className="h-full">
             <div className="pb-2">
               {grouped.length === 0 && (
