@@ -185,6 +185,8 @@ export function FileGraph() {
   const [storylineFunc, setStorylineFunc] = useState<string | null>(null)
   const [selectedFunc, setSelectedFunc] = useState<string | null>(null)
   const [focusNode, setFocusNode] = useState<string | null>(null)
+  const [treeMode, setTreeMode] = useState(false)
+  const [expandedFuncs, setExpandedFuncs] = useState<Set<string>>(new Set())
 
   useEffect(() => { setSelectedFunc(null); setStorylineFunc(null) }, [selectedFile])
 
@@ -212,6 +214,35 @@ export function FileGraph() {
         if (i > 0) ses.push({ id: `se-${i}`, source: `s-${story[i - 1]}`, target: `s-${name}`, style: { stroke: '#f59e0b', strokeWidth: 2.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#f59e0b', width: 16, height: 16 }, type: 'smoothstep' })
       })
       return { nodes: sns, edges: ses, concept }
+    }
+
+    // Tree mode — horizontal call tree from file root
+    if (treeMode) {
+      const tn: Node[] = []
+      const te: Edge[] = []
+
+      // File root node
+      const shortName = selectedFile.split('/').pop() || selectedFile
+      tn.push({ id: 'file-root', type: 'func', position: { x: 40, y: 100 }, data: { label: shortName, stars: 5, isEntry: true } })
+
+      // Functions in file (level 1)
+      funcs.forEach((f, i) => {
+        tn.push({ id: f.name, type: 'func', position: { x: 220, y: 30 + i * 70 }, data: { label: f.name, stars: importance.get(f.name)?.stars || 3, isEntry: importance.get(f.name)?.isEntry || false } })
+        te.push({ id: `root-${f.name}`, source: 'file-root', target: f.name, style: { stroke: '#22c55e', strokeWidth: 1.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e', width: 12, height: 12 }, type: 'smoothstep' })
+      })
+
+      // Expanded functions (level 2+): show their callees
+      const expanded = [...expandedFuncs]
+      expanded.forEach((funcName, gi) => {
+        const callees = [...new Set(calls.filter((c) => c.caller === funcName).map((c) => c.callee))].slice(0, 6)
+        callees.forEach((callee, ci) => {
+          const id = `callee-${funcName}-${callee}`
+          tn.push({ id, type: 'func', position: { x: 400 + gi * 220, y: 30 + ci * 60 }, data: { label: callee, stars: 2, isEntry: false } })
+          te.push({ id: `tc-${funcName}-${callee}`, source: funcName, target: id, style: { stroke: '#d97706', strokeWidth: 1, strokeDasharray: '4 3' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#d97706', width: 10, height: 10 }, type: 'smoothstep' })
+        })
+      })
+
+      return { nodes: tn, edges: te, concept }
     }
 
     const minStars = showAll ? 1 : 3
@@ -272,7 +303,7 @@ export function FileGraph() {
     })
 
     return { nodes: ns, edges: es, concept }
-  }, [selectedFile, symbols, calls, showAll, storylineMode, storylineFunc])
+  }, [selectedFile, symbols, calls, showAll, storylineMode, storylineFunc, treeMode, expandedFuncs])
 
   const displayNodes = useMemo(() => {
     if (!focusNode) return nodes
@@ -291,6 +322,7 @@ export function FileGraph() {
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.id === 'more') { setShowAll(true); return }
+    if (node.id === 'file-root') return
     if (node.id.startsWith('s-')) {
       const name = node.id.slice(2)
       setSelectedEntity({ type: 'function', path: selectedFile || '', name })
@@ -302,10 +334,23 @@ export function FileGraph() {
       setSelectedEntity({ type: 'function', path: selectedFile || '', name })
       return
     }
+    if (node.id.startsWith('callee-')) return
+
+    // Tree mode: toggle function expansion to show callees
+    if (treeMode) {
+      setExpandedFuncs((prev) => {
+        const next = new Set(prev)
+        if (next.has(node.id)) next.delete(node.id)
+        else next.add(node.id)
+        return next
+      })
+      return
+    }
+
     const d = node.data as any
     if (d.label) setSelectedFunc(d.label)
     setFocusNode((prev) => prev === node.id ? null : node.id)
-  }, [selectFile, setSelectedEntity, selectedFile])
+  }, [selectFile, setSelectedEntity, selectedFile, treeMode])
 
   const funcs = symbols.filter((s) => s.file === selectedFile && s.kind === 'function')
   const importance = scoreImportance(funcs, calls, new Set(funcs.map((s) => s.name)))
@@ -337,6 +382,12 @@ export function FileGraph() {
             storylineMode ? 'bg-green-600/20 border-green-800/50 text-green-300' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50'
           )}>
           <GitBranch className="h-3 w-3 inline mr-1" />故事线
+        </button>
+        <button onClick={() => { setTreeMode(!treeMode); setStorylineMode(false); setExpandedFuncs(new Set()) }}
+          className={cn('px-2.5 py-1 rounded text-[10px] border transition-all duration-200',
+            treeMode ? 'bg-amber-600/20 border-amber-800/50 text-amber-300' : 'border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--primary)]/50'
+          )}>
+          🌲 调用树
         </button>
       </div>
 
