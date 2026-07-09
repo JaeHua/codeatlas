@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react'
 import { useStore } from '@/app/store'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { FunctionSquare, Box, Hash, ChevronRight } from 'lucide-react'
 
@@ -33,9 +32,8 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
         <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Outline</span>
       </button>
       {!collapsed && (
-        <div className="flex-1 overflow-hidden" tabIndex={-1}>
-          <ScrollArea className="h-full">
-            <div className="pb-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="pb-2">
               {grouped.length === 0 && (
                 <div className="px-3 py-2 text-[11px] text-[var(--muted-foreground)] text-center">无符号数据</div>
               )}
@@ -63,7 +61,6 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
                 </div>
               ))}
             </div>
-          </ScrollArea>
         </div>
       )}
     </div>
