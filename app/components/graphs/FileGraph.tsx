@@ -223,7 +223,7 @@ export function FileGraph() {
 
       // File root node
       const shortName = selectedFile.split('/').pop() || selectedFile
-      tn.push({ id: 'file-root', type: 'func', position: { x: 40, y: 100 }, data: { label: shortName, stars: 5, isEntry: true } })
+      tn.push({ id: 'file-root', type: 'func', position: { x: 40, y: 300 }, data: { label: shortName, stars: 5, isEntry: true } })
 
       // Functions in file (level 1)
       funcs.forEach((f, i) => {
@@ -231,15 +231,27 @@ export function FileGraph() {
         te.push({ id: `root-${f.name}`, source: 'file-root', target: f.name, style: { stroke: '#22c55e', strokeWidth: 1.5 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#22c55e', width: 12, height: 12 }, type: 'smoothstep' })
       })
 
-      // Expanded functions (level 2+): show their callees
+      // Collect all expanded nodes and their callees, stacked vertically
+      let yOffset = 30
       const expanded = [...expandedFuncs]
-      expanded.forEach((funcName, gi) => {
+      expanded.forEach((nodeId) => {
+        // Extract the actual function name from the node ID
+        const funcName = nodeId.startsWith('callee-') ? nodeId.split('-').slice(2).join('-') : nodeId
         const callees = [...new Set(calls.filter((c) => c.caller === funcName).map((c) => c.callee))].slice(0, 6)
+        if (callees.length === 0) return
+
+        // Determine level based on whether this is a file function or a callee
+        const parentNode = tn.find((n) => n.id === nodeId)
+        const parentX = parentNode?.position.x || 220
+        const level = Math.round((parentX - 40) / 200) + 1
+        const x = 40 + level * 200
+
         callees.forEach((callee, ci) => {
           const id = `callee-${funcName}-${callee}`
-          tn.push({ id, type: 'func', position: { x: 400 + gi * 220, y: 30 + ci * 60 }, data: { label: callee, stars: 2, isEntry: false } })
-          te.push({ id: `tc-${funcName}-${callee}`, source: funcName, target: id, style: { stroke: '#d97706', strokeWidth: 1, strokeDasharray: '4 3' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#d97706', width: 10, height: 10 }, type: 'smoothstep' })
+          tn.push({ id, type: 'func', position: { x, y: yOffset + ci * 55 }, data: { label: callee, stars: 2, isEntry: false } })
+          te.push({ id: `tc-${funcName}-${callee}`, source: nodeId, target: id, style: { stroke: '#d97706', strokeWidth: 1, strokeDasharray: '4 3' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#d97706', width: 10, height: 10 }, type: 'smoothstep' })
         })
+        yOffset += callees.length * 55 + 20
       })
 
       return { nodes: tn, edges: te, concept }
@@ -334,7 +346,18 @@ export function FileGraph() {
       setSelectedEntity({ type: 'function', path: selectedFile || '', name })
       return
     }
-    if (node.id.startsWith('callee-')) return
+    if (node.id.startsWith('callee-')) {
+      // In tree mode, clicking a callee node also toggles its expansion
+      if (treeMode) {
+        setExpandedFuncs((prev) => {
+          const next = new Set(prev)
+          if (next.has(node.id)) next.delete(node.id)
+          else next.add(node.id)
+          return next
+        })
+      }
+      return
+    }
 
     // Tree mode: toggle function expansion to show callees
     if (treeMode) {
