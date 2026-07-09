@@ -33,9 +33,8 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
         <span className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase">Outline</span>
       </button>
       {!collapsed && (
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="pb-2">
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="pb-2">
               {grouped.length === 0 && (
                 <div className="px-3 py-2 text-[11px] text-[var(--muted-foreground)] text-center">无符号数据</div>
               )}
@@ -48,11 +47,13 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
                   </div>
                   {group.items.map((sym) => (
                     <button key={`${sym.kind}-${sym.name}-${sym.line}`}
-                      onClick={() => {
-                        if (!selectedFile) return
+                    onClick={() => {
+                      if (!selectedFile) return
                       selectFile(selectedFile)
-                      window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: sym.line + 1 } }))
-                      }}
+                      // Functions: +1 offset. Structs/macros: raw line (fixed in parse script, need re-parse for accuracy)
+                      const offset = sym.kind === 'function' ? sym.line + 1 : sym.line
+                      window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: offset } }))
+                    }}
                       className="flex items-center gap-1.5 w-full text-left px-5 py-1 text-xs hover:bg-[var(--accent)] transition-colors group">
                       <span className={cn('font-mono truncate flex-1', group.color.replace('text-', 'text-') + '/80')}>{sym.name}</span>
                       <span className="text-[10px] text-[var(--muted-foreground)]/50 opacity-0 group-hover:opacity-100 flex-shrink-0">:{sym.line}</span>
@@ -62,7 +63,6 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
               ))}
             </div>
           </ScrollArea>
-        </div>
       )}
     </div>
   )
