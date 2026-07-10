@@ -149,11 +149,17 @@ export const useStore = create<AppStore>()(
       const recent = path && !s.recentFiles.includes(path)
         ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
         : s.recentFiles
+      const tabs = s.openTabs.includes(path || '')
+        ? s.openTabs
+        : [...s.openTabs, path].filter(Boolean) as string[]
+      const idx = tabs.indexOf(path || '')
       return {
         selectedFile: path,
         activeView: 'code',
         selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path, line } : null,
         recentFiles: recent,
+        openTabs: tabs,
+        activeTabIndex: idx >= 0 ? idx : tabs.length - 1,
       }
     }),
 
