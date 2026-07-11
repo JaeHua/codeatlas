@@ -82,6 +82,15 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.state.apiKey}` },
         body: JSON.stringify({ model: s.state.model || 'deepseek-chat', messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens: 4000 }),
       })
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        const msg = errBody.error?.message || `HTTP ${res.status}: ${res.statusText}`
+        setDesc(msg)
+        setLoading(false)
+        return
+      }
+
       const data = await res.json()
       let text = data.choices?.[0]?.message?.content || ''
       text = text.replace(/```mermaid|```/g, '').trim()
@@ -89,8 +98,8 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
       setMermaidCode(text)
       if (selectedFile) flowCache.set(selectedFile, text)
       setDesc('')
-    } catch (e) {
-      setDesc('生成失败: ' + String(e))
+    } catch (e: any) {
+      setDesc(e?.message || '网络连接失败，请检查网络后重试')
     }
     setLoading(false)
   }
@@ -120,7 +129,13 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
             <p className="text-xs text-[var(--muted-foreground)]/60">预计 5-20 秒</p>
           </div>
         ) : desc ? (
-          <div className="flex items-center justify-center h-48 text-[var(--muted-foreground)] text-sm">{desc}</div>
+          <div className="flex items-center justify-center h-full text-sm p-8">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 max-w-md text-center">
+              <p className="text-red-400 font-semibold mb-2">生成失败</p>
+              <p className="text-[var(--muted-foreground)] text-xs leading-relaxed">{desc}</p>
+              <button onClick={generateCallFlow} className="mt-4 px-3 py-1.5 rounded text-xs border border-[var(--border)] hover:bg-[var(--accent)] transition-colors">重试</button>
+            </div>
+          </div>
         ) : mermaidCode ? (
           <>
             {/* Zoom controls */}
