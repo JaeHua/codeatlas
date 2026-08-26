@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils'
 import { FunctionSquare, Box, Hash, ChevronRight } from 'lucide-react'
 
 const GROUPS: { kind: string; label: string; icon: React.ComponentType<{ className?: string }>; color: string }[] = [
-  { kind: 'function', label: '函数', icon: FunctionSquare, color: 'text-green-400' },
-  { kind: 'struct', label: '结构体', icon: Box, color: 'text-purple-400' },
-  { kind: 'macro', label: '宏定义', icon: Hash, color: 'text-amber-400' },
-  { kind: 'typedef', label: '类型定义', icon: Hash, color: 'text-cyan-400' },
+  { kind: 'function', label: '函数', icon: FunctionSquare, color: 'text-[var(--foreground)]' },
+  { kind: 'struct', label: '结构体', icon: Box, color: 'text-[var(--muted-foreground)]' },
+  { kind: 'macro', label: '宏定义', icon: Hash, color: 'text-[var(--primary)]' },
+  { kind: 'typedef', label: '类型定义', icon: Hash, color: 'text-[var(--muted-foreground)]' },
 ]
 
 export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
@@ -54,7 +54,7 @@ export function SymbolOutline({ collapsed, onToggle }: { collapsed: boolean; onT
                       window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line: offset } }))
                     }}
                       className="flex items-center gap-1.5 w-full text-left px-5 py-1 text-xs hover:bg-[var(--accent)] transition-colors group">
-                      <span className={cn('font-mono truncate flex-1', group.color.replace('text-', 'text-') + '/80')}>{sym.name}</span>
+                      <span className={cn('font-mono truncate flex-1', group.color)}>{sym.name}</span>
                       <span className="text-[10px] text-[var(--muted-foreground)]/50 opacity-0 group-hover:opacity-100 flex-shrink-0">:{sym.line}</span>
                     </button>
                   ))}

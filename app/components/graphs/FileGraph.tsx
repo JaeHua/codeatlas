@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/app/store'
 import { MermaidDiagram } from '@/app/components/ai-panel/MermaidDiagram'
 import { Loader2, Sparkles, RefreshCw, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
@@ -15,6 +15,7 @@ export function FileGraph() {
   const [desc, setDesc] = useState('')
   const [zoom, setZoom] = useState(100)
   const containerRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null)
 
   // Load cached or clear when file changes
   useEffect(() => {
@@ -33,11 +34,41 @@ export function FileGraph() {
     const handler = (e: WheelEvent) => {
       if (e.metaKey || e.ctrlKey) {
         e.preventDefault()
-        setZoom((z) => Math.min(200, Math.max(30, z - Math.sign(e.deltaY) * 15)))
+        setZoom((z) => Math.min(500, Math.max(30, z - Math.sign(e.deltaY) * 15)))
       }
     }
     el.addEventListener('wheel', handler, { passive: false })
     return () => el.removeEventListener('wheel', handler)
+  }, [])
+
+  // Drag to pan (left mouse button)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      dragRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
+      el.style.cursor = 'grabbing'
+    }
+    const onMouseMove = (e: MouseEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      el.scrollLeft = d.scrollLeft - (e.clientX - d.startX)
+      el.scrollTop = d.scrollTop - (e.clientY - d.startY)
+    }
+    const onMouseUp = () => {
+      if (!dragRef.current) return
+      dragRef.current = null
+      el.style.cursor = ''
+    }
+    el.addEventListener('mousedown', onMouseDown)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      el.removeEventListener('mousedown', onMouseDown)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
   }, [])
 
   const generateCallFlow = async () => {
@@ -116,7 +147,7 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
         </span>
         <button onClick={generateCallFlow} disabled={loading}
           className="px-2.5 py-1 rounded text-[11px] border border-[var(--border)] bg-[var(--card)]/80 hover:bg-[var(--accent)] transition-all duration-200 flex items-center gap-1.5">
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : mermaidCode ? <RefreshCw className="h-3 w-3 text-amber-400" /> : <Sparkles className="h-3 w-3 text-amber-400" />}
+          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : mermaidCode ? <RefreshCw className="h-3 w-3 text-[var(--primary)]" /> : <Sparkles className="h-3 w-3 text-[var(--primary)]" />}
           {mermaidCode ? '重新生成' : 'AI 生成调用流程图'}
         </button>
       </div>
@@ -124,13 +155,13 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
       <div ref={containerRef} className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-48 text-[var(--muted-foreground)] gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-amber-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" />
             <p className="text-sm">AI 正在分析函数调用关系...</p>
             <p className="text-xs text-[var(--muted-foreground)]/60">预计 5-20 秒</p>
           </div>
         ) : desc ? (
           <div className="flex items-center justify-center h-full text-sm p-8">
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 max-w-md text-center">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-none p-6 max-w-md text-center">
               <p className="text-red-400 font-semibold mb-2">生成失败</p>
               <p className="text-[var(--muted-foreground)] text-xs leading-relaxed">{desc}</p>
               <button onClick={generateCallFlow} className="mt-4 px-3 py-1.5 rounded text-xs border border-[var(--border)] hover:bg-[var(--accent)] transition-colors">重试</button>
@@ -139,8 +170,8 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
         ) : mermaidCode ? (
           <>
             {/* Zoom controls */}
-            <div className="sticky top-2 right-2 float-right z-10 flex gap-1 bg-[var(--card)]/90 rounded-lg p-1 border border-[var(--border)]">
-              <button onClick={() => setZoom((z) => Math.min(200, z + 15))} className="p-1 hover:bg-[var(--accent)] rounded text-[var(--muted-foreground)]"><ZoomIn className="h-3.5 w-3.5" /></button>
+            <div className="sticky top-2 right-2 float-right z-10 flex gap-1 bg-[var(--card)]/90 rounded-none p-1 border border-[var(--border)]">
+              <button onClick={() => setZoom((z) => Math.min(500, z + 15))} className="p-1 hover:bg-[var(--accent)] rounded text-[var(--muted-foreground)]"><ZoomIn className="h-3.5 w-3.5" /></button>
               <button onClick={() => setZoom((z) => Math.max(30, z - 15))} className="p-1 hover:bg-[var(--accent)] rounded text-[var(--muted-foreground)]"><ZoomOut className="h-3.5 w-3.5" /></button>
               <button onClick={() => setZoom(100)} className="p-1 hover:bg-[var(--accent)] rounded text-[var(--muted-foreground)]"><RotateCcw className="h-3.5 w-3.5" /></button>
               <span className="px-1.5 text-[10px] text-[var(--muted-foreground)] self-center">{zoom}%</span>
@@ -151,7 +182,7 @@ ${JSON.stringify(relevantCalls.slice(0, 100))}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-64 text-[var(--muted-foreground)] gap-4">
-            <Sparkles className="h-10 w-10 text-amber-400/30" />
+            <Sparkles className="h-10 w-10 text-[var(--primary)]/30" />
             <p className="text-sm">点击上方按钮，AI 自动生成调用流程图</p>
             <p className="text-xs text-[var(--muted-foreground)]/60">需要配置 DeepSeek API Key（右上角齿轮）</p>
           </div>

@@ -15,6 +15,8 @@ const shortcuts: { group: string; items: Shortcut[] }[] = [
     group: '导航',
     items: [
       { keys: 'Cmd+K', desc: '全局搜索' },
+      { keys: 'Cmd+[', desc: '后退（跳转历史）' },
+      { keys: 'Cmd+]', desc: '前进（跳转历史）' },
       { keys: 'Cmd+1', desc: '切换到代码视图' },
       { keys: 'Cmd+2', desc: '切换到图谱视图' },
       { keys: 'Cmd+3', desc: '切换到架构视图' },
@@ -45,7 +47,7 @@ const shortcuts: { group: string; items: Shortcut[] }[] = [
 ]
 
 export function KeyboardShortcuts() {
-  const { setActiveView, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed } = useStore()
+  const { setActiveView, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed, goBack, goForward } = useStore()
   const [helpOpen, setHelpOpen] = useState(false)
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -64,6 +66,8 @@ export function KeyboardShortcuts() {
 
     if (!mod) return
 
+    if (e.key === '[') { e.preventDefault(); goBack() }
+    if (e.key === ']') { e.preventDefault(); goForward() }
     if (e.key === '1') { e.preventDefault(); setActiveView('code') }
     if (e.key === '2') { e.preventDefault(); setActiveView('graph') }
     if (e.key === '3') { e.preventDefault(); setActiveView('architecture') }
@@ -82,7 +86,7 @@ export function KeyboardShortcuts() {
       e.preventDefault()
       window.dispatchEvent(new CustomEvent('codeatlas:quick-trace'))
     }
-  }, [setActiveView, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed, helpOpen])
+  }, [setActiveView, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed, helpOpen, goBack, goForward])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
@@ -93,7 +97,7 @@ export function KeyboardShortcuts() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setHelpOpen(false)}>
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 max-w-lg w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-[var(--card)] border border-[var(--border)] p-6 max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-[var(--foreground)]">键盘快捷键</h2>
           <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--muted-foreground)] hover:text-[var(--foreground)]" onClick={() => setHelpOpen(false)}>

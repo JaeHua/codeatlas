@@ -14,9 +14,9 @@ import {
 import '@xyflow/react/dist/style.css'
 
 const nodeColors: Record<string, string> = {
-  current: '#3b82f6',
-  included: '#22c55e',
-  includer: '#a855f7',
+  current: '#E0A93C',
+  included: '#FFFFFF',
+  includer: '#F3EFE6',
 }
 
 export function IncludeGraph() {
@@ -37,8 +37,8 @@ export function IncludeGraph() {
       position: { x: 400, y: 300 },
       style: {
         background: nodeColors.current,
-        color: '#fff',
-        border: '2px solid #2563eb',
+        color: '#1A1A18',
+        border: '2px solid #1A1A18',
         borderRadius: '8px',
         padding: '8px 16px',
         fontSize: 12,
@@ -56,8 +56,8 @@ export function IncludeGraph() {
         },
         style: {
           background: nodeColors.included,
-          color: '#fff',
-          border: '1px solid #16a34a',
+          color: '#1A1A18',
+          border: '1px solid #1A1A18',
           borderRadius: '8px',
           padding: '6px 14px',
           fontSize: 11,
@@ -67,7 +67,7 @@ export function IncludeGraph() {
         id: `${selectedFile}->${inc.to_file}`,
         source: selectedFile,
         target: inc.to_file,
-        style: { stroke: '#22c55e', strokeWidth: 1.5 },
+        style: { stroke: '#1A1A18', strokeWidth: 1.5 },
         animated: true,
       })
     })
@@ -83,8 +83,8 @@ export function IncludeGraph() {
           },
           style: {
             background: nodeColors.includer,
-            color: '#fff',
-            border: '1px solid #9333ea',
+            color: '#4A463E',
+            border: '1px solid #8A8578',
             borderRadius: '8px',
             padding: '6px 14px',
             fontSize: 11,
@@ -95,7 +95,7 @@ export function IncludeGraph() {
         id: `${inc.from_file}->${selectedFile}`,
         source: inc.from_file,
         target: selectedFile,
-        style: { stroke: '#a855f7', strokeWidth: 1.5 },
+        style: { stroke: '#8A8578', strokeWidth: 1.5 },
         animated: true,
       })
     })
@@ -122,7 +122,7 @@ export function IncludeGraph() {
   }
 
   return (
-    <div className="h-full bg-neutral-950">
+    <div className="h-full bg-[var(--background)] bg-gridpaper">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -133,8 +133,8 @@ export function IncludeGraph() {
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#27272a" gap={20} />
-        <Controls className="[&>button]:bg-neutral-800 [&>button]:border-neutral-700 [&>button]:text-neutral-300" />
+        <Background color="rgba(224,169,60,0.10)" gap={24} />
+        <Controls className="[&>button]:bg-[var(--card)] [&>button]:border-[var(--border)] [&>button]:text-[var(--foreground)] [&>button]:rounded-none" />
       </ReactFlow>
     </div>
   )

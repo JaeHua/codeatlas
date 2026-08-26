@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Loader2, FileText, Hash, BookOpen, GitBranch, MessageCircle, ExternalLink, Send, Sparkles, AlertTriangle, X, Settings } from 'lucide-react'
 import { MermaidDiagram } from './MermaidDiagram'
 import { MarkdownRenderer } from './MarkdownRenderer'
+import { CallersSection } from './CallersSection'
 import type { MockAI } from '@/app/lib/types'
 
 interface ChatMessage {
@@ -31,6 +32,7 @@ export function AIPanel() {
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   // Selection explain state
   const [explainMode, setExplainMode] = useState(false)
@@ -41,8 +43,17 @@ export function AIPanel() {
   const [followUpQuery, setFollowUpQuery] = useState('')
   const [followUpSending, setFollowUpSending] = useState(false)
 
+  // Function explain state
+  const [fnMode, setFnMode] = useState(false)
+  const [fnInfo, setFnInfo] = useState<{ filePath: string; functionName: string; source: string; callers: string[]; callees: string[] } | null>(null)
+  const [fnText, setFnText] = useState('')
+  const [fnStreaming, setFnStreaming] = useState(false)
+  const [fnFollowUp, setFnFollowUp] = useState<{ q: string; a: string }[]>([])
+  const [fnFollowUpQuery, setFnFollowUpQuery] = useState('')
+  const [fnFollowUpSending, setFnFollowUpSending] = useState(false)
+
   useEffect(() => {
-    const path = selectedEntity?.type === 'file' ? selectedEntity.path : null
+    const path = selectedEntity?.path || null
 
     if (!path) {
       setData(null)
@@ -62,7 +73,7 @@ export function AIPanel() {
     const timeoutId = setTimeout(() => {
       if (!cancelled) {
         setLoading(false)
-        setError('AI data loading timed out.')
+        setError('AI 数据加载超时（超过 10 秒），请检查网络后重试。')
       }
     }, 10000)
 
@@ -86,7 +97,7 @@ export function AIPanel() {
       cancelled = true
       clearTimeout(timeoutId)
     }
-  }, [selectedEntity?.path, selectedEntity?.type, projectId])
+  }, [selectedEntity?.path, selectedEntity?.type, projectId, reloadKey])
 
   // Listen for selection explain events from CodeViewer
   useEffect(() => {
@@ -146,6 +157,55 @@ export function AIPanel() {
 
     window.addEventListener('codeatlas:explain', handler)
     return () => window.removeEventListener('codeatlas:explain', handler)
+  }, [isConfigured])
+
+  // Listen for function explain events from CodeViewer
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const d = (e as CustomEvent).detail as {
+        filePath: string
+        functionName: string
+        source: string
+        callers: string[]
+        callees: string[]
+      }
+      setFnMode(true)
+      setFnInfo(d)
+      setFnText('')
+      setFnStreaming(true)
+      setFnFollowUp([])
+      setFnFollowUpQuery('')
+
+      if (!isConfigured()) {
+        setFnText('请先在设置中配置 DeepSeek API Key（右上角齿轮图标）')
+        setFnStreaming(false)
+        return
+      }
+
+      let full = ''
+      try {
+        await chatCompletionStream(
+          [
+            {
+              role: 'system',
+              content: '你是 Linux 内核代码分析助手。用户选中了一个 C 函数，请用中文解释它的作用、关键逻辑、以及与调用者/被调用者的关系。简洁专业。',
+            },
+            {
+              role: 'user',
+              content: `文件: ${d.filePath}\n函数: ${d.functionName}\n\n调用它的函数: ${d.callers.join(', ') || '（无）'}\n它调用的函数: ${d.callees.join(', ') || '（无）'}\n\n函数源码:\n\`\`\`c\n${d.source.slice(0, 4000)}\n\`\`\``,
+            },
+          ],
+          (chunk) => { full += chunk; setFnText(full) },
+          undefined
+        )
+      } catch {
+        if (!full) setFnText('解释生成失败，请重试')
+      } finally {
+        setFnStreaming(false)
+      }
+    }
+    window.addEventListener('codeatlas:explain-function', handler)
+    return () => window.removeEventListener('codeatlas:explain-function', handler)
   }, [isConfigured])
 
   useEffect(() => {
@@ -212,6 +272,121 @@ export function AIPanel() {
     setFollowUpSending(false)
   }
 
+  const handleFnFollowUp = async () => {
+    if (!fnFollowUpQuery.trim() || fnFollowUpSending) return
+    const q = fnFollowUpQuery.trim()
+    setFnFollowUpQuery('')
+    setFnFollowUp((prev) => [...prev, { q, a: '' }])
+    setFnFollowUpSending(true)
+    const s = JSON.parse(localStorage.getItem('codeatlas-settings') || '{}')
+    if (!s?.state?.apiKey) { setFnFollowUp((prev) => prev.map((it, i) => i === prev.length - 1 ? { ...it, a: '请先配置 API Key' } : it)); setFnFollowUpSending(false); return }
+    try {
+      const res = await fetch(`${s.state.baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.state.apiKey}` },
+        body: JSON.stringify({ model: s.state.model || 'deepseek-chat', messages: [{ role: 'system', content: `之前解释的函数 ${fnInfo?.functionName} 源码:\n\`\`\`c\n${(fnInfo?.source || '').slice(0, 2000)}\n\`\`\`\n\n解释: ${fnText.slice(0, 1000)}\n\n用户有后续问题。用中文简洁回答。` }, { role: 'user', content: q }], temperature: 0.3, max_tokens: 1024 }),
+      })
+      const d = await res.json()
+      setFnFollowUp((prev) => prev.map((it, i) => i === prev.length - 1 ? { ...it, a: d.choices?.[0]?.message?.content || '无响应' } : it))
+    } catch { setFnFollowUp((prev) => prev.map((it, i) => i === prev.length - 1 ? { ...it, a: '请求失败' } : it)) }
+    setFnFollowUpSending(false)
+  }
+
+  if (fnMode) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+          <span className="text-xs font-semibold text-[var(--primary)] uppercase flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            AI 函数解释
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            onClick={() => { setFnMode(false); setFnText('') }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+        <div className="flex-1 min-h-0">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <code className="text-sm font-mono font-semibold text-[var(--foreground)]">{fnInfo?.functionName}</code>
+                <span className="text-[10px] text-[var(--muted-foreground)] font-mono truncate">{fnInfo?.filePath}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)]">
+                  调用者:
+                </span>
+                {fnInfo?.callers.length ? fnInfo.callers.map((c) => (
+                  <Badge key={c} variant="outline" className="text-[10px] border-[var(--border)] text-[var(--primary)] font-mono">{c}</Badge>
+                )) : <span className="text-[10px] text-[var(--muted-foreground)]/60">无</span>}
+                <span className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] ml-2">
+                  被调用者:
+                </span>
+                {fnInfo?.callees.length ? fnInfo.callees.map((c) => (
+                  <Badge key={c} variant="outline" className="text-[10px] border-[var(--border)] text-[var(--muted-foreground)] font-mono">{c}</Badge>
+                )) : <span className="text-[10px] text-[var(--muted-foreground)]/60">无</span>}
+              </div>
+              <div className="bg-[var(--card)] rounded-none border border-[var(--border)] overflow-hidden">
+                <div className="px-3 py-1.5 border-b border-[var(--border)] text-[10px] text-[var(--muted-foreground)] flex items-center justify-between">
+                  <span>函数源码</span>
+                  <span className="text-[var(--muted-foreground)]/50">{fnInfo?.source.split('\n').length} 行</span>
+                </div>
+                <pre className="p-3 text-xs font-mono text-[var(--foreground)] whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
+                  {fnInfo?.source}
+                </pre>
+              </div>
+              <div className="bg-[var(--card)] rounded-none border border-[var(--border)] overflow-hidden">
+                <div className="px-3 py-1.5 border-b border-[var(--border)] text-[10px] text-[var(--muted-foreground)] flex items-center justify-between">
+                  <span>AI 解释</span>
+                  {fnStreaming && (
+                    <span className="flex items-center gap-1 text-[var(--primary)]">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      生成中...
+                    </span>
+                  )}
+                </div>
+                <div className="p-3 text-[var(--foreground)] leading-relaxed prose-sm prose-invert max-w-none">
+                  {fnText ? <MarkdownRenderer content={fnText} /> : <span className="text-xs">等待解释...</span>}
+                </div>
+              </div>
+
+              {fnFollowUp.map((item, i) => (
+                <div key={i} className="space-y-1.5">
+                  <div className="bg-[var(--primary)]/10 rounded-none p-2.5 border border-[var(--primary)]/20">
+                    <div className="text-[10px] text-[var(--muted-foreground)] mb-1">追问</div>
+                    <p className="text-xs text-[var(--foreground)]">{item.q}</p>
+                  </div>
+                  {item.a ? (
+                    <div className="bg-[var(--card)] rounded-none p-2.5 border border-[var(--border)]">
+                      <MarkdownRenderer content={item.a} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] px-2">
+                      <Loader2 className="h-3 w-3 animate-spin" /> 生成中...
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <div className="flex gap-1.5">
+                <Textarea value={fnFollowUpQuery} onChange={(e) => setFnFollowUpQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFnFollowUp() } }}
+                  placeholder="针对这个函数继续追问... (Shift+Enter 换行)" disabled={fnFollowUpSending}
+                  className="min-h-[32px] max-h-[100px] text-xs resize-none bg-[var(--muted)]/50 border-[var(--border)]" rows={1} />
+                <Button size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleFnFollowUp} disabled={fnFollowUpSending || !fnFollowUpQuery.trim()}>
+                  <Send className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+    )
+  }
+
   if (explainMode) {
     return (
       <div className="flex flex-col h-full">
@@ -236,7 +411,7 @@ export function AIPanel() {
         <div className="flex-1 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-4 space-y-3">
-              <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
+              <div className="bg-[var(--card)] rounded-none border border-[var(--border)] overflow-hidden">
                 <div className="px-3 py-1.5 border-b border-[var(--border)] text-[10px] text-[var(--muted-foreground)]">
                   选中的代码
                 </div>
@@ -244,7 +419,7 @@ export function AIPanel() {
                   {explainCode}
                 </pre>
               </div>
-              <div className="bg-[var(--card)] rounded-lg border border-[var(--border)] overflow-hidden">
+              <div className="bg-[var(--card)] rounded-none border border-[var(--border)] overflow-hidden">
                 <div className="px-3 py-1.5 border-b border-[var(--border)] text-[10px] text-[var(--muted-foreground)] flex items-center justify-between">
                   <span>AI 解释</span>
                   {explainStreaming && (
@@ -266,12 +441,12 @@ export function AIPanel() {
             {/* Follow-up Q&A */}
             {explainFollowUp.map((item, i) => (
               <div key={i} className="space-y-1.5">
-                <div className="bg-[var(--primary)]/10 rounded-lg p-2.5 border border-[var(--primary)]/20">
+                <div className="bg-[var(--primary)]/10 rounded-none p-2.5 border border-[var(--primary)]/20">
                   <div className="text-[10px] text-[var(--muted-foreground)] mb-1">追问</div>
                   <p className="text-xs text-[var(--foreground)]">{item.q}</p>
                 </div>
                 {item.a ? (
-                  <div className="bg-[var(--card)] rounded-lg p-2.5 border border-[var(--border)]">
+                  <div className="bg-[var(--card)] rounded-none p-2.5 border border-[var(--border)]">
                     <MarkdownRenderer content={item.a} />
                   </div>
                 ) : (
@@ -310,17 +485,42 @@ export function AIPanel() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-[var(--muted-foreground)] text-sm">
-        {error}
+      <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-6 text-center gap-3">
+        <AlertTriangle className="h-7 w-7 text-[var(--primary)]" />
+        <p>{error}</p>
+        <button
+          onClick={() => { setError(null); setReloadKey((k) => k + 1) }}
+          className="px-3 py-1.5 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--accent)] transition-colors"
+        >
+          重试
+        </button>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-2 text-[var(--muted-foreground)]">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-xs">加载中...</span>
+      <div className="p-4 space-y-5 animate-fabric-in">
+        <div className="space-y-1.5">
+          <div className="h-3 w-16 bg-[var(--muted)] animate-shimmer" />
+          <div className="h-3 w-full bg-[var(--muted)] animate-shimmer" />
+          <div className="h-3 w-4/5 bg-[var(--muted)] animate-shimmer" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-3 w-20 bg-[var(--muted)] animate-shimmer" />
+          <div className="h-3 w-full bg-[var(--muted)] animate-shimmer" />
+          <div className="h-3 w-2/3 bg-[var(--muted)] animate-shimmer" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-3 w-24 bg-[var(--muted)] animate-shimmer" />
+          <div className="h-8 w-full bg-[var(--muted)] animate-shimmer" />
+          <div className="h-8 w-full bg-[var(--muted)] animate-shimmer" />
+          <div className="h-8 w-4/5 bg-[var(--muted)] animate-shimmer" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-3 w-16 bg-[var(--muted)] animate-shimmer" />
+          <div className="h-16 w-full bg-[var(--muted)] animate-shimmer" />
+        </div>
       </div>
     )
   }
@@ -342,12 +542,27 @@ export function AIPanel() {
         <p>未配置 AI API Key</p>
         <button
           onClick={() => {
-            // Trigger settings open
             window.dispatchEvent(new Event('codeatlas:open-settings'))
           }}
-          className="px-3 py-1.5 text-xs border border-[var(--border)] rounded-lg hover:bg-[var(--accent)] transition-colors"
+          className="px-3 py-1.5 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--accent)] transition-colors"
         >
           前往设置
+        </button>
+      </div>
+    )
+  }
+
+  // Show AI request failure state
+  if ((data as any).error === 'api_error' || (data as any).error === 'network') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-[var(--muted-foreground)] text-sm px-6 text-center gap-3">
+        <AlertTriangle className="h-7 w-7 text-[var(--primary)]" />
+        <p>{data.plainExplanation || ((data as any).error === 'network' ? '网络连接失败，请检查网络后重试' : 'AI 请求失败，请稍后重试')}</p>
+        <button
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="px-3 py-1.5 text-xs border border-[var(--border)] rounded-none hover:bg-[var(--accent)] transition-colors"
+        >
+          重试
         </button>
       </div>
     )
@@ -365,6 +580,10 @@ export function AIPanel() {
             </div>
             <p className="text-sm text-[var(--foreground)] leading-relaxed">{data.summary}</p>
           </section>
+
+          {selectedEntity?.type === 'function' && selectedEntity.name && (
+            <CallersSection functionName={selectedEntity.name} />
+          )}
 
           <section>
             <div className="flex items-center gap-1.5 mb-1.5">
@@ -413,7 +632,7 @@ export function AIPanel() {
                 <GitBranch className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
                 <h3 className="text-xs font-semibold text-[var(--muted-foreground)] uppercase">流程图</h3>
               </div>
-              <div className="bg-[var(--card)] rounded-lg p-3 border border-[var(--border)]">
+              <div className="bg-[var(--card)] rounded-none p-3 border border-[var(--border)]">
                 <MermaidDiagram chart={data.mermaid} />
               </div>
             </section>
@@ -444,7 +663,7 @@ export function AIPanel() {
               </div>
               <div className="space-y-2">
                 {data.faq.map((item, i) => (
-                  <div key={i} className="bg-[var(--card)] rounded-lg p-2.5 border border-[var(--border)]">
+                  <div key={i} className="bg-[var(--card)] rounded-none p-2.5 border border-[var(--border)]">
                     <p className="text-xs text-[var(--foreground)] font-medium mb-1">{item.q}</p>
                     <p className="text-xs text-[var(--muted-foreground)]">{item.a}</p>
                   </div>
@@ -464,7 +683,7 @@ export function AIPanel() {
                 {chatMessages.map((msg, i) => (
                   <div
                     key={i}
-                    className={`rounded-lg p-2.5 border ${
+                    className={`rounded-none p-2.5 border ${
                       msg.role === 'user'
                         ? 'bg-[var(--primary)]/10 border-[var(--primary)]/50'
                         : 'bg-[var(--card)] border-[var(--border)]'
@@ -504,7 +723,7 @@ export function AIPanel() {
                 handleSend()
               }
             }}
-            placeholder="针对该文件向 AI 提问... (Shift+Enter 换行)"
+            placeholder="针对该文件向 AI 提问..."
             disabled={sending}
             className="min-h-[32px] max-h-[100px] text-xs resize-none bg-[var(--muted)]/50 border-[var(--border)]"
             rows={1}

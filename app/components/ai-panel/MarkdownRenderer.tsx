@@ -30,7 +30,7 @@ export function MarkdownRenderer({ content }: Props) {
             )
           }
           return (
-            <pre className="text-xs font-mono bg-[var(--background)] border border-[var(--border)] rounded-lg p-3 my-2 overflow-x-auto whitespace-pre-wrap">
+            <pre className="text-xs font-mono bg-[var(--background)] border border-[var(--border)] rounded-none p-3 my-2 overflow-x-auto whitespace-pre-wrap">
               <code className={className} {...props}>
                 {children}
               </code>

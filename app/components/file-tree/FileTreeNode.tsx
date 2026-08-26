@@ -55,7 +55,7 @@ export function FileTreeNode({ node, depth, selectedFile, onSelect }: Props) {
           }}
             className={cn(
               'flex items-center gap-1 flex-1 text-left px-2 py-0.5 text-sm transition-all duration-200 min-w-0',
-              isSelected && 'glass animate-breathe'
+              isSelected && 'bg-[var(--card)] accent-bar'
             )}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >

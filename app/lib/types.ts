@@ -46,14 +46,15 @@ export interface MockAI {
 }
 
 export interface SearchResult {
-  type: 'file' | 'function' | 'struct' | 'macro' | 'content'
+  type: 'file' | 'function' | 'struct' | 'macro' | 'content' | 'ref' | 'typedef' | 'variable'
   name: string
   path: string
   line?: number
   score: number
+  match?: string
 }
 
-export type ActiveView = 'code' | 'graph' | 'architecture'
+export type ActiveView = 'code' | 'graph' | 'architecture' | 'struct'
 
 export interface SelectedEntity {
   type: 'file' | 'function'

@@ -17,7 +17,7 @@ interface ThemeStore {
 export const useTheme = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      currentTheme: 'fabric',
+      currentTheme: 'blueprint',
       customColors: {},
       setTheme: (name) => set({ currentTheme: name }),
       setCustomColor: (key, value) =>

@@ -14,18 +14,22 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-const NODE_STYLES: Record<string, { bg: string; border: string; size: string }> = {
-  file:    { bg: '#1e40af', border: '#3b82f6', size: 'text-xs px-3 py-2' },
-  function:{ bg: '#15803d', border: '#22c55e', size: 'text-xs px-3 py-1.5' },
-  struct:  { bg: '#7e22ce', border: '#a855f7', size: 'text-xs px-3 py-1.5' },
-  macro:   { bg: '#b45309', border: '#f59e0b', size: 'text-[10px] px-2 py-1' },
+const ACCENT = '#E0A93C'
+const LINE = '#8A8578'
+
+// 黑灰白节点，当前/选中用黄
+const NODE_STYLES: Record<string, { shape: string; textColor: string }> = {
+  file:     { shape: 'rect', textColor: '#1A1A18' },
+  function: { shape: 'ellipse', textColor: '#1A1A18' },
+  struct:   { shape: 'rect', textColor: '#1A1A18' },
+  macro:    { shape: 'rect', textColor: '#1A1A18' },
 }
 
 const EDGE_COLORS: Record<string, string> = {
-  include:    '#3b82f6',
-  call:       '#22c55e',
-  struct_dep: '#a855f7',
-  concept:    '#f59e0b',
+  include:    LINE,
+  call:       '#1A1A18',
+  struct_dep: '#B9B3A6',
+  concept:    ACCENT,
 }
 
 export function KnowledgeGraph() {
@@ -49,38 +53,33 @@ export function KnowledgeGraph() {
     const add = (id: string, label: string, type: string, file?: string, line?: number) => {
       if (map.has(id)) return
       const style = NODE_STYLES[type] || NODE_STYLES.file
+      const isCurrent = id === selectedFile
       map.set(id, {
         id,
-        data: {
-          label,
-          type,
-          file,
-          line,
-        },
+        data: { label, type, file, line },
         position: { x: 0, y: 0 },
         style: {
-          background: style.bg,
-          color: '#e5e5e5',
-          border: `1.5px solid ${style.border}`,
-          borderRadius: type === 'file' ? '8px' : '16px',
-          padding: style.size.split(' ').slice(1).join(' '),
-          fontSize: style.size.split(' ')[0] === 'text-xs' ? 11 : 10,
-          fontWeight: type === 'file' ? 600 : 500,
+          background: isCurrent ? ACCENT : '#FFFFFF',
+          color: style.textColor,
+          border: `1.5px solid ${isCurrent ? ACCENT : '#1A1A18'}`,
+          borderRadius: style.shape === 'ellipse' ? '9999px' : '2px',
+          padding: '4px 12px',
+          fontSize: 11,
+          fontWeight: 600,
+          fontFamily: 'var(--font-mono)',
+          boxShadow: isCurrent ? 'none' : undefined,
         },
       })
     }
 
-    // Current file as center
     if (selectedFile) {
       add(selectedFile, selectedFile.split('/').pop()!, 'file', selectedFile)
     }
 
-    // Add symbols
     for (const s of symbols) {
       add(s.name, s.name, s.kind, s.file, s.line)
     }
 
-    // Include edges add file nodes
     for (const inc of includes) {
       if (selectedFile && (inc.from_file === selectedFile || inc.to_file === selectedFile)) {
         const other = inc.from_file === selectedFile ? inc.to_file : inc.from_file
@@ -93,57 +92,39 @@ export function KnowledgeGraph() {
 
   const allEdges = useMemo(() => {
     const edges: Edge[] = []
+    const edge = (id: string, source: string, target: string, color: string, dash?: string) => ({
+      id,
+      source,
+      target,
+      type: 'smoothstep',
+      style: { stroke: color, strokeWidth: 1.2, strokeDasharray: dash, opacity: 0.9 },
+      markerEnd: { type: MarkerType.ArrowClosed, color, width: 12, height: 12 },
+    })
 
-    // Include edges
     if (visibleEdgeTypes.has('include') && selectedFile) {
       for (const inc of includes) {
         if (inc.from_file === selectedFile || inc.to_file === selectedFile) {
-          const source = inc.from_file
-          const target = inc.to_file
-          if (allNodes.has(source) && allNodes.has(target)) {
-            edges.push({
-              id: `inc:${source}->${target}`,
-              source,
-              target,
-              type: 'smoothstep',
-              style: { stroke: EDGE_COLORS.include, strokeWidth: 1.5 },
-              markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.include, width: 14, height: 14 },
-            })
+          if (allNodes.has(inc.from_file) && allNodes.has(inc.to_file)) {
+            edges.push(edge(`inc:${inc.from_file}->${inc.to_file}`, inc.from_file, inc.to_file, EDGE_COLORS.include))
           }
         }
       }
     }
 
-    // Call edges
     if (visibleEdgeTypes.has('call') && selectedFile) {
       for (const call of calls) {
         if (call.caller_file === selectedFile || call.callee_file === selectedFile) {
           if (allNodes.has(call.caller) && allNodes.has(call.callee)) {
-            edges.push({
-              id: `call:${call.caller}->${call.callee}`,
-              source: call.caller,
-              target: call.callee,
-              type: 'smoothstep',
-              style: { stroke: EDGE_COLORS.call, strokeWidth: 1.5, strokeDasharray: '5 5' },
-              markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.call, width: 14, height: 14 },
-            })
+            edges.push(edge(`call:${call.caller}->${call.callee}`, call.caller, call.callee, EDGE_COLORS.call, '4 3'))
           }
         }
       }
     }
 
-    // Struct dep edges
     if (visibleEdgeTypes.has('struct_dep')) {
       for (const s of structs) {
         if (allNodes.has(s.struct_name) && allNodes.has(s.uses)) {
-          edges.push({
-            id: `struct:${s.struct_name}->${s.uses}`,
-            source: s.struct_name,
-            target: s.uses,
-            type: 'smoothstep',
-            style: { stroke: EDGE_COLORS.struct_dep, strokeWidth: 1.5, strokeDasharray: '3 3' },
-            markerEnd: { type: MarkerType.ArrowClosed, color: EDGE_COLORS.struct_dep, width: 12, height: 12 },
-          })
+          edges.push(edge(`struct:${s.struct_name}->${s.uses}`, s.struct_name, s.uses, EDGE_COLORS.struct_dep, '2 2'))
         }
       }
     }
@@ -182,19 +163,17 @@ export function KnowledgeGraph() {
     const nodeArr = displayNodes.filter((n) => n.id !== center)
     const centerNode = displayNodes.find((n) => n.id === center)
 
-    // Place center at origin
     if (centerNode) {
       centerNode.position = { x: 500, y: 350 }
     }
 
-    // Arrange others in concentric circles
     const files = nodeArr.filter((n) => (n.data as { type: string }).type === 'file')
     const funcs = nodeArr.filter((n) => (n.data as { type: string }).type === 'function')
     const structs = nodeArr.filter((n) => (n.data as { type: string }).type === 'struct')
     const rest = nodeArr.filter((n) => !files.includes(n) && !funcs.includes(n) && !structs.includes(n))
 
     const layers = [files, funcs, structs, rest]
-    const radii = [250, 350, 450, 550]
+    const radii = [240, 340, 440, 540]
 
     for (let l = 0; l < layers.length; l++) {
       const layer = layers[l]
@@ -233,25 +212,25 @@ export function KnowledgeGraph() {
   }
 
   return (
-    <div className="h-full relative">
+    <div className="h-full relative bg-gridpaper">
       {/* Edge type filter bar */}
-      <div className="absolute top-2 left-2 z-10 flex gap-1 bg-[var(--card)]/90 rounded-lg p-1 border border-[var(--border)]">
+      <div className="absolute top-2 left-2 z-10 flex gap-0 bg-[var(--card)] border border-[var(--border)]">
         {([
-          ['include', '#3b82f6', 'Include'],
-          ['call', '#22c55e', '函数调用'],
-          ['struct_dep', '#a855f7', '结构体'],
-          ['concept', '#f59e0b', '概念'],
+          ['include', LINE, 'Include'],
+          ['call', '#1A1A18', '函数调用'],
+          ['struct_dep', '#B9B3A6', '结构体'],
+          ['concept', ACCENT, '概念'],
         ] as const).map(([type, color, label]) => (
           <button
             key={type}
             onClick={() => toggleEdgeType(type)}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1 text-[10px] transition-colors ${
               visibleEdgeTypes.has(type)
-                ? 'bg-[var(--muted)] text-[var(--foreground)]'
-                : 'text-[var(--muted-foreground)]/70 hover:text-[var(--muted-foreground)]'
+                ? 'text-[var(--foreground)]'
+                : 'text-[var(--muted-foreground)]/60 hover:text-[var(--muted-foreground)]'
             }`}
           >
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+            <span className="w-1.5 h-1.5" style={{ backgroundColor: color }} />
             {label}
           </button>
         ))}
@@ -259,9 +238,9 @@ export function KnowledgeGraph() {
 
       {/* Focus indicator */}
       {focusNode && (
-        <div className="absolute top-2 right-2 z-10 bg-[var(--card)]/90 rounded-lg px-3 py-1.5 border border-[var(--primary)]/50 text-xs">
+        <div className="absolute top-2 right-2 z-10 bg-[var(--card)] px-3 py-1.5 border border-[var(--border)] text-xs">
           <span className="text-[var(--muted-foreground)]">聚焦: </span>
-          <span className="text-[var(--primary)] font-mono">{focusNode}</span>
+          <span className="text-[var(--foreground)] font-mono">{focusNode}</span>
           <button
             onClick={() => setFocusNode(null)}
             className="ml-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-[10px]"
@@ -280,9 +259,11 @@ export function KnowledgeGraph() {
         fitView
         fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
+        minZoom={0.2}
+        maxZoom={2.5}
       >
-        <Background color="#27272a" gap={20} />
-        <Controls className="[&>button]:bg-[var(--muted)] [&>button]:border-[var(--border)] [&>button]:text-[var(--foreground)]" />
+        <Background color="rgba(224,169,60,0.10)" gap={24} />
+        <Controls className="[&>button]:bg-[var(--card)] [&>button]:border-[var(--border)] [&>button]:text-[var(--foreground)] [&>button]:rounded-none" />
       </ReactFlow>
     </div>
   )

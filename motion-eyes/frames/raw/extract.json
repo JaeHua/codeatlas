@@ -1,0 +1,15 @@
+{
+  "source": "/Users/jaehua/projects/i/codeatlas/motion-eyes/source/首屏动画.mp4",
+  "frameCount": 101,
+  "fps": 10.0,
+  "width": 1164,
+  "height": 1080,
+  "interpolated": false,
+  "key": "#6E7F66",
+  "transparentThreshold": 15.0,
+  "opaqueThreshold": 90.0,
+  "cutout": {
+    "transparentPixels": 94879380,
+    "partialPixels": 2880788
+  }
+}

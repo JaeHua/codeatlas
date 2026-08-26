@@ -9,13 +9,13 @@ import { useTheme } from '@/app/store/theme'
 import type { editor } from 'monaco-editor'
 
 function buildMonacoTheme(vars: Record<string, string>): editor.IStandaloneThemeData {
-  const bg = vars['--background']?.replace('#', '') || 'f5f0e8'
-  const fg = vars['--foreground']?.replace('#', '') || '3d3629'
-  const primary = vars['--primary']?.replace('#', '') || 'c17e60'
-  const mutedFg = vars['--muted-foreground']?.replace('#', '') || '8c8273'
-  const card = vars['--card']?.replace('#', '') || 'ede6d8'
-  const border = vars['--border']?.replace('#', '') || 'd4c9b5'
-  const accent = vars['--accent']?.replace('#', '') || 'e8dcc8'
+  const bg = vars['--background']?.replace('#', '') || 'FBF8F0'
+  const fg = vars['--foreground']?.replace('#', '') || '1A1A18'
+  const primary = vars['--primary']?.replace('#', '') || 'E0A93C'
+  const mutedFg = vars['--muted-foreground']?.replace('#', '') || '8A8578'
+  const card = vars['--card']?.replace('#', '') || 'FFFFFF'
+  const border = vars['--border']?.replace('#', '') || 'E2DDD2'
+  const accent = vars['--accent']?.replace('#', '') || 'F3EFE6'
   return {
     base: 'vs', inherit: false,
     rules: [
@@ -61,6 +61,7 @@ function ensureHoverProvider(monaco: any) {
         sym.signature ? `\`\`\`c\n${sym.signature}\n\`\`\`` : '',
         sym.description || '',
         `📁 ${sym.file}:${sym.line}`,
+        '_⌘+点击 跳转定义_',
       ].filter(Boolean).join('\n\n')
       return {
         range: { startLineNumber: position.lineNumber, endLineNumber: position.lineNumber, startColumn: word.startColumn, endColumn: word.endColumn },
@@ -68,6 +69,26 @@ function ensureHoverProvider(monaco: any) {
       }
     },
   })
+}
+
+/** 从源码提取函数体（从定义行起做花括号配对，上限 200 行） */
+function extractFunctionBody(source: string, defLine: number): string {
+  const lines = source.split('\n')
+  const start = Math.max(0, defLine - 1)
+  let depth = 0
+  let started = false
+  const body: string[] = []
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i]
+    body.push(line)
+    for (const ch of line) {
+      if (ch === '{') { depth++; started = true }
+      else if (ch === '}') depth--
+    }
+    if (started && depth === 0 && body.length > 1) break
+    if (body.length > 200) break
+  }
+  return body.join('\n')
 }
 
 function getLanguage(filename: string | null): string {
@@ -123,7 +144,9 @@ export function CodeViewer() {
   // Keep global symbol ref updated (used by the shared hover provider)
   globalSymbolsRef = symbols
 
-  useEffect(() => { if (selectedEntity?.line) pendingLineRef.current = selectedEntity.line }, [selectedEntity?.line])
+  useEffect(() => {
+    pendingLineRef.current = selectedEntity?.line || null
+  }, [selectedEntity?.line, selectedEntity?.path])
 
   useEffect(() => {
     const line = pendingLineRef.current
@@ -137,12 +160,34 @@ export function CodeViewer() {
       options: { isWholeLine: true, className: 'search-highlight-line', marginClassName: 'search-highlight-margin' },
     }])
     setTimeout(() => { decorationsRef.current = ed.deltaDecorations(decorationsRef.current, []) }, 3000)
-  }, [source])
+  }, [source, selectedEntity?.line, selectedEntity?.path])
 
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
     ensureHoverProvider(monaco)
+
+    // ⌘/Ctrl+Click: jump to symbol definition (cross-file)
+    editor.onMouseDown((e) => {
+      if (!(e.event.metaKey || e.event.ctrlKey)) return
+      const model = editor.getModel()
+      if (!model) return
+      const pos = e.target.position
+      if (!pos) return
+      const word = model.getWordAtPosition(pos)
+      if (!word) return
+      const state = useStore.getState()
+      const sym = state.symbols.find((s) => s.name === word.word)
+      if (!sym) return
+      e.event.preventDefault()
+      e.event.stopPropagation()
+      const line = sym.kind === 'function' ? sym.line + 1 : sym.line
+      if (sym.file === state.selectedFile) {
+        window.dispatchEvent(new CustomEvent('codeatlas:reveal-line', { detail: { line } }))
+      } else {
+        state.selectFileWithLine(sym.file, line)
+      }
+    })
 
     // Cmd+E action for selection explain
     editor.addAction({
@@ -176,6 +221,30 @@ export function CodeViewer() {
         if (!word) return
         const sym = symbols.find((s) => s.name === word.word && s.kind === 'function')
         if (sym) window.dispatchEvent(new CustomEvent('codeatlas:trace', { detail: { type: 'trace', functionName: word.word } }))
+      },
+    })
+
+    // 解释此函数：提取函数体 + 调用上下文 → AI 面板
+    editor.addAction({
+      id: 'explain-function', label: 'AI 解释此函数', contextMenuGroupId: 'navigation', contextMenuOrder: 2,
+      run: (ed) => {
+        const model = ed.getModel()
+        const position = ed.getPosition()
+        if (!model || !position) return
+        const word = model.getWordAtPosition(position)
+        if (!word) return
+        const state = useStore.getState()
+        const func = state.symbols.find((s) => s.name === word.word && s.kind === 'function')
+        if (!func) return
+        const filePath = state.selectedFile || ''
+        const source = model.getValue()
+        const body = extractFunctionBody(source, func.line)
+        const relevant = state.calls.filter((c) => c.caller === word.word || c.callee === word.word)
+        const callers = Array.from(new Set(relevant.filter((c) => c.callee === word.word).map((c) => c.caller)))
+        const callees = Array.from(new Set(relevant.filter((c) => c.caller === word.word).map((c) => c.callee)))
+        window.dispatchEvent(new CustomEvent('codeatlas:explain-function', {
+          detail: { filePath, fileName: filePath.split('/').pop() || '', functionName: word.word, source: body, callers, callees },
+        }))
       },
     })
   }, [selectedFile, symbols])

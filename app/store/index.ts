@@ -39,6 +39,9 @@ interface AppStore {
   favorites: string[]
   recentFiles: string[]
 
+  navBack: { path: string; line?: number }[]
+  navForward: { path: string; line?: number }[]
+
   setFiles: (files: FileNode[]) => void
   setProjectId: (id: number | null) => void
   setSymbols: (s: Symbol[]) => void
@@ -71,6 +74,42 @@ interface AppStore {
   setActiveTab: (index: number) => void
   setCursorPosition: (line: number, column: number) => void
   setFileInfo: (lineCount: number, language: string) => void
+  goBack: () => void
+  goForward: () => void
+}
+
+interface NavPos {
+  path: string
+  line?: number
+}
+
+const MAX_HISTORY = 50
+
+/** 应用跳转位置：设置选中文件、标签页、实体（不操作历史栈） */
+function applyPosition(s: AppStore, path: string | null, line?: number) {
+  const recent = path && !s.recentFiles.includes(path)
+    ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
+    : s.recentFiles
+  const tabs = s.openTabs.includes(path || '')
+    ? s.openTabs
+    : [...s.openTabs, path].filter(Boolean) as string[]
+  const idx = tabs.indexOf(path || '')
+  return {
+    selectedFile: path,
+    activeView: 'code' as const,
+    selectedEntity: path
+      ? { type: 'file' as const, path, name: path.split('/').pop() || path, ...(line ? { line } : {}) }
+      : null,
+    recentFiles: recent,
+    openTabs: tabs,
+    activeTabIndex: idx >= 0 ? idx : tabs.length - 1,
+  }
+}
+
+/** 把当前浏览位置压入后退栈 */
+function pushNav(s: AppStore): NavPos[] {
+  if (!s.selectedFile) return s.navBack
+  return [...s.navBack, { path: s.selectedFile, line: s.cursorLine }].slice(-MAX_HISTORY)
 }
 
 export const useStore = create<AppStore>()(
@@ -109,6 +148,8 @@ export const useStore = create<AppStore>()(
 
       favorites: [],
       recentFiles: [],
+      navBack: [],
+      navForward: [],
 
       setFiles: (files) => set({ files }),
       setProjectId: (projectId) => set({ projectId }),
@@ -126,42 +167,47 @@ export const useStore = create<AppStore>()(
         })),
 
       selectFile: (path) =>
+        set((s) => ({
+          ...applyPosition(s, path),
+          navBack: pushNav(s),
+          navForward: [],
+        })),
+  selectFileWithLine: (path: string | null, line?: number) =>
+    set((s) => ({
+      ...applyPosition(s, path, line),
+      navBack: pushNav(s),
+      navForward: [],
+    })),
+
+      goBack: () =>
         set((s) => {
-          const recent = path && !s.recentFiles.includes(path)
-            ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
-            : s.recentFiles
-          // Add to tabs if not already there
-          const tabs = s.openTabs.includes(path || '')
-            ? s.openTabs
-            : [...s.openTabs, path].filter(Boolean) as string[]
-          const idx = tabs.indexOf(path || '')
+          if (s.navBack.length === 0) return s
+          const back = [...s.navBack]
+          const prev = back.pop() as NavPos
+          const forward = s.selectedFile
+            ? [{ path: s.selectedFile, line: s.cursorLine }, ...s.navForward].slice(0, MAX_HISTORY)
+            : s.navForward
           return {
-            selectedFile: path,
-            activeView: 'code',
-            selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path } : null,
-            recentFiles: recent,
-            openTabs: tabs,
-            activeTabIndex: idx >= 0 ? idx : tabs.length - 1,
+            ...applyPosition(s, prev.path, prev.line),
+            navBack: back,
+            navForward: forward,
           }
         }),
-  selectFileWithLine: (path: string | null, line?: number) =>
-    set((s) => {
-      const recent = path && !s.recentFiles.includes(path)
-        ? [path, ...s.recentFiles.filter((f) => f !== path)].slice(0, 10)
-        : s.recentFiles
-      const tabs = s.openTabs.includes(path || '')
-        ? s.openTabs
-        : [...s.openTabs, path].filter(Boolean) as string[]
-      const idx = tabs.indexOf(path || '')
-      return {
-        selectedFile: path,
-        activeView: 'code',
-        selectedEntity: path ? { type: 'file', path, name: path.split('/').pop() || path, line } : null,
-        recentFiles: recent,
-        openTabs: tabs,
-        activeTabIndex: idx >= 0 ? idx : tabs.length - 1,
-      }
-    }),
+
+      goForward: () =>
+        set((s) => {
+          if (s.navForward.length === 0) return s
+          const forward = [...s.navForward]
+          const next = forward.shift() as NavPos
+          const back = s.selectedFile
+            ? [...s.navBack, { path: s.selectedFile, line: s.cursorLine }].slice(-MAX_HISTORY)
+            : s.navBack
+          return {
+            ...applyPosition(s, next.path, next.line),
+            navBack: back,
+            navForward: forward,
+          }
+        }),
 
       setActiveView: (activeView) => set({ activeView }),
       setSelectedEntity: (selectedEntity) => set({ selectedEntity }),

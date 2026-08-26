@@ -11,13 +11,15 @@ import { AIPanel } from '@/app/components/ai-panel/AIPanel'
 import { SearchBar } from '@/app/components/layout/SearchBar'
 import { TracePanel } from '@/app/components/trace/TracePanel'
 import { KeyboardShortcuts } from '@/app/components/layout/KeyboardShortcuts'
+import { StructGraph } from '@/app/components/graphs/StructGraph'
 import { cn } from '@/lib/utils'
-import { PanelLeft, PanelRight, Code, Share2, Map, X } from 'lucide-react'
+import { PanelLeft, PanelRight, Code, Share2, Map, Box, X } from 'lucide-react'
 
 const tabs = [
   { id: 'code' as const, label: '代码', icon: Code },
   { id: 'graph' as const, label: '图谱', icon: Share2 },
   { id: 'architecture' as const, label: '架构', icon: Map },
+  { id: 'struct' as const, label: '结构体', icon: Box },
 ]
 
 export function AppShell({ projectId }: { projectId?: number }) {
@@ -108,7 +110,7 @@ export function AppShell({ projectId }: { projectId?: number }) {
               <span className="text-[11px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Explorer</span>
               <button
                 onClick={() => setLeftCollapsed(true)}
-                className="h-6 w-6 flex items-center justify-center rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-black/5 hover-lift transition-all duration-200"
+                className="h-6 w-6 flex items-center justify-center rounded-none text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-black/5 transition-all duration-200"
               >
                 <PanelLeft className="h-3.5 w-3.5" />
               </button>
@@ -159,7 +161,7 @@ export function AppShell({ projectId }: { projectId?: number }) {
                 key={tab.id}
                 onClick={() => setActiveView(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-300 -mb-[1px] hover-lift',
+                  'flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all duration-300 -mb-[1px]',
                   activeView === tab.id
                     ? 'text-[var(--primary)] border-b-2 border-[var(--primary)] bg-[var(--card)]'
                     : 'text-[var(--muted-foreground)] border-b-2 border-transparent hover:text-[var(--foreground)]'
@@ -197,6 +199,7 @@ export function AppShell({ projectId }: { projectId?: number }) {
             {activeView === 'code' && <CodeViewer />}
             {activeView === 'graph' && <FileGraph />}
             {activeView === 'architecture' && <ArchitectureMap />}
+            {activeView === 'struct' && <StructGraph />}
           </div>
           <TracePanel />
         </div>

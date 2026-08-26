@@ -51,7 +51,7 @@ export function SettingsDialog() {
         <Settings className="h-3.5 w-3.5" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="glass sm:max-w-lg max-h-[80vh] animate-scale-in">
+        <DialogContent className="bg-[var(--card)] border-[var(--border)] text-[var(--foreground)] sm:max-w-lg max-h-[80vh] animate-scale-in">
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">设置</DialogTitle>
           </DialogHeader>

@@ -86,9 +86,9 @@ export default function ProjectPage() {
             <span>正在解析项目代码</span>
             <span>{parseProgress}%</span>
           </div>
-          <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
+          <div className="h-2 bg-[var(--muted)] rounded-none overflow-hidden">
             <div
-              className="h-full bg-[var(--primary)] rounded-full transition-all duration-500"
+              className="h-full bg-[var(--primary)] rounded-none transition-all duration-500"
               style={{ width: `${parseProgress}%` }}
             />
           </div>

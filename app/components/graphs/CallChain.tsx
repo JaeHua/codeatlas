@@ -254,7 +254,7 @@ export function CallChain() {
           <ScrollArea className="h-full">
             <div className="p-4">
               {/* Selected function header */}
-              <div className="mb-4 p-3 rounded-lg bg-[var(--primary)]/10 border border-[var(--primary)]/30">
+              <div className="mb-4 p-3 bg-[var(--primary)]/10 border border-[var(--primary)]/30">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-[10px] bg-[var(--primary)]/20 border-[var(--primary)]/30 text-[var(--primary)]">
                     当前函数

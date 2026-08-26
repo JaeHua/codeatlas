@@ -13,9 +13,10 @@ function ensureInit() {
     securityLevel: 'loose',
     suppressErrorRendering: true,
     themeVariables: {
-      primaryColor: '#c17e60', primaryTextColor: '#3d3629', primaryBorderColor: '#d4c9b5',
-      lineColor: '#8c8273', secondaryColor: '#d4c9b5', tertiaryColor: '#e8dcc8',
-      noteBkgColor: '#ede6d8', noteTextColor: '#8c8273',
+      primaryColor: '#FFFFFF', primaryTextColor: '#1A1A18', primaryBorderColor: '#1A1A18',
+      lineColor: '#8A8578', secondaryColor: '#F3EFE6', tertiaryColor: '#F3EFE6',
+      noteBkgColor: '#FFF7E0', noteTextColor: '#4A463E',
+      edgeLabelBackground: '#FFFFFF',
     },
     flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
   })
@@ -52,7 +53,7 @@ export function MermaidDiagram({ chart }: { chart: string }) {
 
   if (error) {
     return (
-      <pre className="text-xs font-mono text-[var(--muted-foreground)] whitespace-pre-wrap p-3 rounded-lg border border-[var(--border)] overflow-auto max-h-[300px]">
+      <pre className="text-xs font-mono text-[var(--muted-foreground)] whitespace-pre-wrap p-3 rounded-none border border-[var(--border)] overflow-auto max-h-[300px]">
         {chart}
       </pre>
     )

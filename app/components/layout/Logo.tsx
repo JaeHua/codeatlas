@@ -1,33 +1,27 @@
+const RING_PATH = 'M 94.2 56.7 L 94.5 59.3 L 94.3 62.4 L 92.4 65.8 L 90.6 69.0 L 91.0 71.7 L 89.4 74.6 L 87.2 78.3 L 86.3 80.4 L 84.3 83.4 L 82.7 84.6 L 79.1 87.1 L 77.1 89.0 L 75.3 90.9 L 72.1 93.3 L 70.0 93.7 L 66.5 94.2 L 63.7 96.2 L 61.0 96.9 L 57.5 97.3 L 54.5 97.7 L 50.8 98.9 L 48.2 98.0 L 44.4 96.5 L 41.9 95.9 L 38.2 95.7 L 35.7 94.8 L 33.4 92.8 L 29.1 92.9 L 27.3 89.6 L 25.4 88.0 L 21.9 86.9 L 20.4 83.7 L 18.0 81.8 L 15.7 78.7 L 15.2 76.7 L 13.8 73.6 L 12.1 70.4 L 11.6 67.6 L 11.3 64.3 L 11.0 61.1 L 10.1 58.1 L 10.2 54.9 L 10.6 51.6 L 10.0 48.4 L 12.2 45.0 L 12.0 41.8 L 12.9 39.1 L 14.8 36.5 L 16.8 33.9 L 18.8 30.5 L 19.9 28.9 L 22.3 26.3 L 24.6 24.1 L 27.9 22.9 L 30.0 21.4 L 32.3 18.3 L 35.3 17.8 L 38.2 15.9 L 41.3 15.4 L 44.9 14.5 L 47.2 15.3 L 50.6 14.4 L 54.0 14.7 L 57.3 14.1 L 60.2 14.2 L 63.3 15.0 L 66.3 17.8 L 69.2 18.0 L 71.8 20.4 L 75.1 21.4 L 78.0 22.9 L 80.3 24.5 L 82.5 27.2 L 84.1 29.7 L 86.8 32.7 L 88.3 34.7 L 88.9 38.0 L 91.3 41.1 L 91.5 43.3 L 92.6 47.3 L 93.6 50.2 L 94.1 53.1 L 93.6 56.3 Z'
+
+const SWOOSH_PATH = 'M 38.3 19.0 L 46.3 22.9 L 44.6 25.2 L 40.1 28.0 L 34.8 32.2 L 30.2 36.9 L 27.4 42.5 L 25.3 48.4 L 24.2 54.8 L 25.0 61.6 L 27.2 67.4 L 30.8 72.4 L 35.7 75.9 L 41.8 78.8 L 47.9 80.0 L 53.8 80.8 L 58.0 81.1 L 59.0 80.3 L 57.9 78.3 L 57.1 77.4 L 59.8 77.5 L 65.6 77.5 L 70.9 76.6 L 74.7 74.3 L 75.4 69.4 L 74.3 64.3 L 73.0 58.5 L 72.8 54.1 L 72.4 51.3 L 70.9 52.3 L 68.5 56.0 L 65.8 61.1 L 61.9 65.2 L 58.7 68.0 L 56.4 69.1 L 56.6 66.9 L 56.3 66.3 L 54.3 67.9 L 50.8 70.8 L 47.2 72.7 L 44.4 71.7 L 42.9 68.6 L 42.2 63.0 L 41.2 57.3 L 41.2 50.4 L 42.5 44.3 L 45.0 38.4 L 48.9 33.4 L 53.7 29.5 L 59.2 26.8 L 64.3 25.1 L 67.1 23.8 L 62.1 22.0 L 45.6 19.0 Z'
+
+/** 手绘线稿 logo：黑色动感弧线 + 淡黄手绘圆环 */
 export function Logo({ className = 'h-6 w-6' }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 200 200"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <line x1="20" y1="100" x2="180" y2="100" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-      <line x1="100" y1="20" x2="100" y2="180" stroke="#334155" strokeWidth="0.5" strokeDasharray="4 4" />
-      <path d="M30 150 C 60 130, 80 160, 100 130 C 120 100, 140 120, 170 90" stroke="#475569" strokeWidth="1.5" />
-      <path d="M30 120 C 60 90, 80 130, 100 100 C 120 70, 140 100, 170 60" stroke="url(#gao)" strokeWidth="2" strokeLinecap="round" />
-      <path d="M35 85 C 65 65, 85 95, 100 80 C 115 65, 135 80, 165 45" stroke="#64748b" strokeWidth="1.2" strokeDasharray="3 3" />
-      <g>
-        <line x1="100" y1="100" x2="100" y2="50" stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 2" />
-        <circle cx="100" cy="100" r="4.5" fill="#f59e0b" />
-        <circle cx="100" cy="100" r="8" stroke="#f59e0b" strokeWidth="0.5" opacity="0.5" />
-        <circle cx="100" cy="50" r="3" fill="#fb7185" />
-        <line x1="60" y1="110" x2="60" y2="150" stroke="#64748b" strokeWidth="1" />
-        <circle cx="60" cy="110" r="3.5" fill="#fb7185" />
-        <line x1="140" y1="90" x2="140" y2="120" stroke="#64748b" strokeWidth="1" />
-        <circle cx="140" cy="90" r="3.5" fill="#fb7185" />
-      </g>
-      <defs>
-        <linearGradient id="gao" x1="30" y1="100" x2="170" y2="100" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#f59e0b" />
-          <stop offset="60%" stopColor="#f43f5e" />
-          <stop offset="100%" stopColor="#ec4899" />
-        </linearGradient>
-      </defs>
+    <svg viewBox="0 0 100 100" className={className} fill="none" aria-label="CodeAtlas" role="img">
+      <path
+        d={RING_PATH}
+        fill="none"
+        stroke="#F0D878"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d={SWOOSH_PATH}
+        fill="none"
+        stroke="var(--foreground)"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
