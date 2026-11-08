@@ -4,29 +4,17 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useStore } from '@/app/store'
 import { MermaidDiagram } from '@/app/components/ai-panel/MermaidDiagram'
+import { allowCodeatlasUrl, parseCodeatlasHref, parseFileLineRef } from '@/app/lib/codeatlas-refs'
 
 interface Props {
   content: string
-}
-
-function parseCodeatlasHref(href?: string): { path: string; line?: number } | null {
-  if (!href || !href.startsWith('codeatlas://file')) return null
-  try {
-    const url = new URL(href)
-    const path = url.searchParams.get('path')
-    const lineStr = url.searchParams.get('line')
-    if (!path) return null
-    const line = lineStr ? Number(lineStr) : undefined
-    return { path, line: Number.isFinite(line) ? line : undefined }
-  } catch {
-    return null
-  }
 }
 
 export function ProjectAIMarkdown({ content }: Props) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
+      urlTransform={allowCodeatlasUrl}
       components={{
         h1: ({ children }) => <h1 className="text-base font-bold text-[var(--foreground)] mt-3 mb-2">{children}</h1>,
         h2: ({ children }) => <h2 className="text-sm font-semibold text-[var(--foreground)] mt-3 mb-1.5">{children}</h2>,
@@ -41,6 +29,18 @@ export function ProjectAIMarkdown({ content }: Props) {
             return <MermaidDiagram chart={String(children).replace(/\n$/, '')} />
           }
           if (!match) {
+            const fileRef = parseFileLineRef(String(children))
+            if (fileRef) {
+              return (
+                <button
+                  type="button"
+                  onClick={() => useStore.getState().selectFileWithLine(fileRef.path, fileRef.line)}
+                  className="text-[11px] font-mono bg-[var(--muted)] text-[var(--primary)] px-1 py-0.5 rounded underline cursor-pointer"
+                >
+                  {children}
+                </button>
+              )
+            }
             return (
               <code className="text-[11px] font-mono bg-[var(--muted)] text-[var(--primary)] px-1 py-0.5 rounded" {...props}>
                 {children}
