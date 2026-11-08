@@ -1,4 +1,4 @@
-import type { FlowCard, FlowStep, FlowDataStruct } from './types'
+import type { FlowCard, FlowStep, FlowDataStruct, FlowEntry } from './types'
 
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
@@ -51,7 +51,17 @@ export function parseFlowCard(raw: string): FlowCard {
 
   const mermaid = typeof obj.mermaid === 'string' && obj.mermaid.trim() ? obj.mermaid : undefined
 
+  const entryRec = asRecord(obj.entry)
+  const entry: FlowEntry | undefined = entryRec.name
+    ? {
+        name: asString(entryRec.name),
+        file: asString(entryRec.file),
+        line: typeof entryRec.line === 'number' ? entryRec.line : undefined,
+      }
+    : undefined
+
   return {
+    entry,
     trigger: asString(obj.trigger),
     steps,
     dataFlow,

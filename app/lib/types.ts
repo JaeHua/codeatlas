@@ -108,6 +108,7 @@ export interface FlowDataStruct {
 }
 
 export interface FlowCard {
+  entry?: FlowEntry
   trigger: string
   steps: FlowStep[]
   dataFlow: FlowDataStruct[]

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getProject, getFlowCache, setFlowCache } from '@/app/lib/db'
-import { buildFlowContext, buildFlowPrompt } from '@/app/lib/flow-context'
+import { buildFlowContext, buildFlowPrompt, buildTopicFlowContext, buildTopicFlowPrompt } from '@/app/lib/flow-context'
 import { parseFlowCard } from '@/app/lib/flow-card'
 import type { FlowEntry } from '@/app/lib/types'
 
@@ -10,25 +10,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const body = await req.json()
-    const { entry, apiKey, baseUrl, model, force } = body as {
+    const { entry, query, apiKey, baseUrl, model, force } = body as {
       entry?: FlowEntry
+      query?: string
       apiKey?: string
       baseUrl?: string
       model?: string
       force?: boolean
     }
 
-    if (!entry?.name) return NextResponse.json({ error: 'entry.name required' }, { status: 400 })
+    const topic = typeof query === 'string' ? query.trim() : ''
+    if (!entry?.name && !topic) return NextResponse.json({ error: 'entry.name or query required' }, { status: 400 })
     if (!apiKey) return NextResponse.json({ error: 'apiKey required' }, { status: 400 })
 
-    const entryKey = `${entry.file || ''}::${entry.name}`
+    const entryKey = topic ? `topic::${topic.toLowerCase()}` : `${entry?.file || ''}::${entry?.name}`
 
     if (!force) {
       const cached = await getFlowCache(projectId, entryKey)
       if (cached?.data) {
         try {
           const card = JSON.parse(String(cached.data))
-          return NextResponse.json({ entry, card, cached: true })
+          const resolved = (card?.entry as FlowEntry | undefined) || entry || { name: topic, file: '' }
+          return NextResponse.json({ entry: resolved, card, cached: true })
         } catch {
           // corrupted cache — regenerate below
         }
@@ -36,8 +39,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const project = (await getProject(projectId)) as { name?: string } | undefined
-    const ctx = await buildFlowContext(projectId, entry)
-    const prompt = buildFlowPrompt(project?.name || '当前项目', ctx)
+    const projectName = project?.name || '当前项目'
+    const ctx = topic ? await buildTopicFlowContext(projectId, topic) : await buildFlowContext(projectId, entry as FlowEntry)
+    const prompt = topic ? buildTopicFlowPrompt(projectName, topic, ctx) : buildFlowPrompt(projectName, ctx)
 
     const res = await fetch(`${baseUrl || 'https://api.deepseek.com'}/v1/chat/completions`, {
       method: 'POST',
@@ -59,9 +63,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const data = await res.json()
     const raw = data.choices?.[0]?.message?.content || ''
     const card = parseFlowCard(raw)
+    const resolvedEntry = card.entry || entry || { name: topic, file: '' }
     await setFlowCache(projectId, entryKey, JSON.stringify(card))
 
-    return NextResponse.json({ entry, card, cached: false })
+    return NextResponse.json({ entry: resolvedEntry, card, cached: false })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

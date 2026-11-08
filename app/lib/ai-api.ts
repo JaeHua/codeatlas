@@ -160,9 +160,9 @@ export async function streamProjectAI(
 
 export async function generateFlowWalkthrough(
   projectId: number,
-  entry: FlowEntry,
+  input: { entry?: FlowEntry; query?: string },
   force = false
-): Promise<{ card: FlowCard; cached: boolean }> {
+): Promise<{ card: FlowCard; entry?: FlowEntry; cached: boolean }> {
   const { apiKey, baseUrl, model } = useSettings.getState()
 
   if (!apiKey) {
@@ -172,12 +172,12 @@ export async function generateFlowWalkthrough(
   const res = await fetch(`/api/projects/${projectId}/ai-flow`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ entry, apiKey, baseUrl, model, force }),
+    body: JSON.stringify({ entry: input.entry, query: input.query, apiKey, baseUrl, model, force }),
   })
 
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error || `API error: ${res.status}`)
-  return { card: data.card as FlowCard, cached: Boolean(data.cached) }
+  return { card: data.card as FlowCard, entry: data.entry as FlowEntry | undefined, cached: Boolean(data.cached) }
 }
 
 export function buildContext(

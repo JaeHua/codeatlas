@@ -1,4 +1,5 @@
 import { getFileTree, getSymbols, getCalls } from './db'
+import { retrieveProjectContext } from './project-retrieval'
 import type { FlowEntry } from './types'
 
 interface FileRow { path: string; name: string; type: string; content?: string | null }
@@ -18,6 +19,7 @@ export interface FlowContext {
   edges: { caller: string; callee: string }[]
   sources: { path: string; content: string }[]
   degraded: boolean
+  structureSummary?: string
 }
 
 const MAX_NODES = 40
@@ -152,6 +154,87 @@ ${sources || '（无源码）'}
 
 ## 输出 JSON 格式
 {
+  "trigger": "触发条件与前因（什么场景进入这条流程）",
+  "steps": [
+    { "name": "函数名", "file": "路径", "line": 123, "role": "该步一句话职责", "confidence": "graph" }
+  ],
+  "dataFlow": [
+    { "struct": "结构体名", "role": "作用", "fields": ["字段1", "字段2"], "lifecycle": "创建→填充→消费→释放" }
+  ],
+  "effects": ["返回值/状态变化/对系统的后果"],
+  "mermaid": "sequenceDiagram\\n A->>B: ..."
+}`
+}
+
+export async function buildTopicFlowContext(projectId: number, query: string): Promise<FlowContext> {
+  const [symbolRows, callRows, retrieval] = await Promise.all([
+    getSymbols(projectId),
+    getCalls(projectId),
+    retrieveProjectContext(projectId, query),
+  ])
+
+  const symbols = symbolRows as SymbolRow[]
+  const calls = callRows as CallRow[]
+  const fnNames = new Set(symbols.filter((s) => s.kind === 'function').map((s) => s.name))
+
+  const functions: FlowCandidate[] = symbols
+    .filter((s) => s.kind === 'function')
+    .slice(0, 300)
+    .map((s) => ({ name: s.name, file: s.file, line: s.line ?? undefined }))
+
+  const edges = calls
+    .filter((c) => fnNames.has(c.caller) && fnNames.has(c.callee))
+    .slice(0, 200)
+    .map((c) => ({ caller: c.caller, callee: c.callee }))
+
+  return {
+    entry: { name: query, file: '' },
+    callers: [],
+    functions,
+    edges,
+    sources: retrieval.files.map((f) => ({ path: f.path, content: f.content })),
+    degraded: edges.length === 0,
+    structureSummary: retrieval.structureSummary,
+  }
+}
+
+export function buildTopicFlowPrompt(projectName: string, query: string, ctx: FlowContext): string {
+  const fnList = ctx.functions.slice(0, 200).map((f) => `- ${f.name} (${f.file || '?'}:${f.line ?? '?'})`).join('\n')
+  const edgeList = ctx.edges.slice(0, 150).map((e) => `- ${e.caller} -> ${e.callee}`).join('\n')
+  const sources = ctx.sources.map((s) => `### 文件: ${s.path}\n\`\`\`c\n${s.content}\n\`\`\``).join('\n\n')
+
+  return `你是资深 Linux 内核工程师，正在为一个新手讲解他关心的一个“流程”。
+
+项目: ${projectName}
+用户想了解: ${query}
+
+## 项目结构概览
+${ctx.structureSummary || '（无）'}
+
+## 项目中的函数（来自符号表）
+${fnList || '（无）'}
+
+## 静态调用边（可能不完整，函数指针/间接调用常缺失）
+${edgeList || '（无）'}
+
+## 相关源码（按问题检索）
+${sources || '（无）'}
+
+## 任务
+1. 先从上面的“函数列表”中挑选最合适的入口函数，填入输出 JSON 的 entry 字段（name 必须来自函数列表）。
+2. 围绕该入口，提炼一条 5–10 步的精选主路径，讲清楚“前因 → 调用流转 → 数据结构 → 后果”。
+
+## 严格要求
+- 只输出 JSON，不要 markdown 代码围栏，不要解释文字。
+- entry.name 必须来自“函数列表”；entry.file 用该函数所在文件，行号不确定可省略。
+- steps 里若某步来自“静态调用边/函数列表”，confidence 填 "graph"；若你根据内核知识补充但调用关系未被静态图捕获，填 "inferred"。
+- dataFlow 描述关键结构体（如 sk_buff、fib_result、rtable、dst_entry、task_struct 等）的作用、涉及字段、生命周期。
+- mermaid 用 sequenceDiagram 或 flowchart，只画主路径。
+- 全部用中文。
+
+## 输出 JSON 格式
+{
+  "entry": { "name": "入口函数名", "file": "路径", "line": 123 },
   "trigger": "触发条件与前因（什么场景进入这条流程）",
   "steps": [
     { "name": "函数名", "file": "路径", "line": 123, "role": "该步一句话职责", "confidence": "graph" }
