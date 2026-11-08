@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useId } from 'react'
+import { createPortal } from 'react-dom'
 import mermaid from 'mermaid'
 import { X, Maximize2 } from 'lucide-react'
 
@@ -86,9 +87,9 @@ export function MermaidDiagram({ chart }: { chart: string }) {
           <Maximize2 className="h-3 w-3" />
         </div>
       </div>
-      {expanded && (
+      {expanded && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6"
           onClick={() => setExpanded(false)}
         >
           <button
@@ -103,7 +104,8 @@ export function MermaidDiagram({ chart }: { chart: string }) {
             onClick={(e) => e.stopPropagation()}
             dangerouslySetInnerHTML={{ __html: svg }}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

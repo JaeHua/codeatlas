@@ -307,10 +307,15 @@ body::before {
 .mermaid-diagram-zoom {
   background: #ffffff;
   padding: 12px;
+  width: 90vw;
+  height: 84vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .mermaid-diagram-zoom svg {
-  max-width: 88vw !important;
-  max-height: 82vh !important;
-  width: auto !important;
-  height: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
 }
