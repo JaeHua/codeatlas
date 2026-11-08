@@ -11,7 +11,7 @@ import { Loader2, Sparkles, RefreshCw, AlertCircle, ArrowRight, Database, Search
 
 type FlowSource = { entry?: FlowEntry; query?: string }
 
-export function ProjectAIFlowView({ projectId }: { projectId: number }) {
+export function ProjectAIFlowView({ projectId, onOpenChat }: { projectId: number; onOpenChat?: () => void }) {
   const selectedEntity = useStore((s) => s.selectedEntity)
   const apiKey = useSettings((s) => s.apiKey)
   const [queryInput, setQueryInput] = useState('')
@@ -62,6 +62,22 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
   const headerName = cardEntry?.name || selectedFn?.name || '未指定入口'
   const headerFile = cardEntry?.file || selectedFn?.file || ''
   const headerLine = cardEntry?.line ?? selectedFn?.line
+  const hasQuery = queryInput.trim().length > 0
+  const selectionDiffers = Boolean(
+    cardEntry && selectedFn && `${selectedFn.file}::${selectedFn.name}` !== `${cardEntry.file}::${cardEntry.name}`
+  )
+
+  function handleTopAction() {
+    if (hasQuery) {
+      generate({ query: queryInput.trim() }, !!card)
+      return
+    }
+    if (card && lastSource) {
+      generate(lastSource, true)
+      return
+    }
+    generateFromInput()
+  }
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
@@ -76,12 +92,12 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
           </p>
         </div>
         <button
-          onClick={() => (card && lastSource ? generate(lastSource, true) : generateFromInput())}
+          onClick={handleTopAction}
           disabled={loading}
           className="flex flex-shrink-0 items-center gap-1 border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--foreground)] hover:bg-[var(--muted)]/50 disabled:opacity-40"
         >
           {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          {card ? '重新生成' : '生成'}
+          {hasQuery ? '用问题生成' : card ? '重新生成' : '生成'}
         </button>
       </div>
 
@@ -97,7 +113,7 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
                 generateFromInput()
               }
             }}
-            placeholder="直接描述流程，如：路由查找 / 进程调度"
+            placeholder="描述一个具体流程，如：路由查找 / 6LoWPAN 解压"
             className="min-w-0 flex-1 border border-[var(--border)] bg-[var(--muted)]/40 px-2 py-1 text-[11px] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]/70 outline-none focus-visible:border-[var(--ring)]"
           />
           <button
@@ -109,9 +125,22 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
             生成
           </button>
         </div>
-        <p className="mt-1 text-[10px] text-[var(--muted-foreground)]">
-          {selectedFn ? `留空则使用当前选中函数：${selectedFn.name}` : '没选函数时，在这里输入想了解的流程'}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-[var(--muted-foreground)]">
+          <span>{selectedFn ? `留空则使用当前选中函数：${selectedFn.name}` : '在这里输入一个具体流程'}</span>
+          {onOpenChat && (
+            <button onClick={onOpenChat} className="text-[var(--primary)] hover:underline">
+              想了解整个项目/学习路线？去「项目问答」
+            </button>
+          )}
+        </div>
+        {selectionDiffers && !hasQuery && selectedFn && (
+          <div className="mt-1 flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--muted)]/30 px-2 py-1">
+            <span className="min-w-0 truncate text-[10px] text-[var(--muted-foreground)]">已选中 {selectedFn.name}</span>
+            <button onClick={() => generate({ entry: selectedFn })} className="flex-shrink-0 text-[10px] text-[var(--primary)] hover:underline">
+              为它生成
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-2">
@@ -139,8 +168,16 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
         {!loading && !error && !card && (
           <div className="space-y-2 py-4">
             <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
-              输入一个流程或选中一个函数，生成一条包含前因、调用分步、数据结构与后果的主路径。
+              输入一个具体流程或选中一个函数，生成一条包含前因、调用分步、数据结构与后果的主路径。
             </p>
+            {onOpenChat && (
+              <button
+                onClick={onOpenChat}
+                className="border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--foreground)] hover:bg-[var(--muted)]/50"
+              >
+                想了解整个项目？去「项目问答」
+              </button>
+            )}
           </div>
         )}
 

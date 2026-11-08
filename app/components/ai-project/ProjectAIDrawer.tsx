@@ -46,7 +46,7 @@ export function ProjectAIDrawer({ projectId }: { projectId: number }) {
                       : 'border-b-2 border-transparent px-1 pb-0.5 text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                   }
                 >
-                  对话
+                  项目问答
                 </button>
                 <button
                   onClick={() => setTab('flow')}
@@ -72,7 +72,7 @@ export function ProjectAIDrawer({ projectId }: { projectId: number }) {
             <ProjectAIView projectId={projectId} />
           </div>
           <div className={tab === 'flow' ? 'flex flex-1 min-h-0 flex-col' : 'hidden'}>
-            <ProjectAIFlowView projectId={projectId} />
+            <ProjectAIFlowView projectId={projectId} onOpenChat={() => setTab('chat')} />
           </div>
         </div>
       )}
