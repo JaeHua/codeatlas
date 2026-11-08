@@ -62,6 +62,7 @@ export function parseFlowCard(raw: string): FlowCard {
 
   return {
     entry,
+    summary: asString(obj.summary) || undefined,
     trigger: asString(obj.trigger),
     steps,
     dataFlow,

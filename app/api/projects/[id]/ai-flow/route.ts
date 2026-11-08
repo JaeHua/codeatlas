@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!entry?.name && !topic) return NextResponse.json({ error: 'entry.name or query required' }, { status: 400 })
     if (!apiKey) return NextResponse.json({ error: 'apiKey required' }, { status: 400 })
 
-    const entryKey = topic ? `topic::${topic.toLowerCase()}` : `${entry?.file || ''}::${entry?.name}`
+    const entryKey = topic ? `v2::topic::${topic.toLowerCase()}` : `v2::${entry?.file || ''}::${entry?.name}`
 
     if (!force) {
       const cached = await getFlowCache(projectId, entryKey)

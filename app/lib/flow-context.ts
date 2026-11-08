@@ -28,6 +28,14 @@ const MAX_SOURCE_FILES = 8
 const MAX_PER_FILE = 3000
 const MAX_TOTAL = 18000
 
+const PLAIN_STYLE = `## 讲解风格（最重要，务必遵守）
+- 读者是 Linux 内核零基础的初学者。用大白话，像给朋友讲，不要端着。
+- 先讲“它是干什么的、为什么需要它”，再提函数名和细节；不要一上来堆术语。
+- 必须用到的术语，第一次出现时用一句大白话解释，例如“路由表：系统用来决定数据包走哪条路的对照表”。
+- 每个步骤的 role 用一句口语化的话（不超过 30 字），说清“做了什么、为了什么”，不要罗列参数、宏、字段。
+- 多用生活化类比（如查地图、快递分拣）帮助建立直觉。
+- 不展开代码行级细节，先让人明白整体在做什么。`
+
 export async function buildFlowContext(projectId: number, entry: FlowEntry): Promise<FlowContext> {
   const [fileRows, symbolRows, callRows] = await Promise.all([
     getFileTree(projectId),
@@ -142,26 +150,32 @@ ${edgeList || '（无静态调用边，可能全是函数指针/间接调用）'
 ${sources || '（无源码）'}
 
 ## 任务
-围绕入口函数，提炼一条 5–10 步的精选主路径，讲清楚“前因 → 调用流转 → 数据结构 → 后果”。
+围绕入口函数，提炼一条 5–8 步的主路径，讲清楚“前因 → 调用流转 → 数据结构 → 后果”。
+
+${PLAIN_STYLE}
 
 ## 严格要求
 - 只输出 JSON，不要 markdown 代码围栏，不要解释文字。
-- steps 里若某步来自上面的“静态调用边/函数列表”，confidence 填 "graph"；若你根据内核知识补充但其调用关系未被静态图捕获（函数指针、间接调用等），填 "inferred"。
+- summary：用一句大白话概括“这个流程到底在干嘛”。
+- trigger：用生活化场景说明“什么情况下会走到这里”。
+- steps 控制在 5–8 步，只放最关键的；若某步来自上面的“静态调用边/函数列表”，confidence 填 "graph"；若你根据内核知识补充但其调用关系未被静态图捕获（函数指针、间接调用等），填 "inferred"。
 - 文件路径尽量用上面出现的真实路径；行号不确定可省略 line。
-- dataFlow 描述关键结构体（如 task_struct、sk_buff、fib_result、rtable、dst_entry 等）的作用、涉及字段、生命周期。
-- mermaid 用 sequenceDiagram 或 flowchart，只画主路径。
+- dataFlow 最多 3 个最关键的结构体；fields 用“字段（含义）”形式，最多 4 个；用“谁创建 → 装了什么 → 谁用它 → 最后怎么处理”的话说生命周期。
+- effects：说清对系统或用户的实际影响，别只写技术术语。
+- mermaid 用 sequenceDiagram 或 flowchart，只画主路径，节点名可简短。
 - 全部用中文。
 
 ## 输出 JSON 格式
 {
-  "trigger": "触发条件与前因（什么场景进入这条流程）",
+  "summary": "一句话大白话总结这个流程",
+  "trigger": "什么场景下会走到这里（大白话）",
   "steps": [
-    { "name": "函数名", "file": "路径", "line": 123, "role": "该步一句话职责", "confidence": "graph" }
+    { "name": "函数名", "file": "路径", "line": 123, "role": "一句大白话说明这步做了什么、为了什么", "confidence": "graph" }
   ],
   "dataFlow": [
-    { "struct": "结构体名", "role": "作用", "fields": ["字段1", "字段2"], "lifecycle": "创建→填充→消费→释放" }
+    { "struct": "结构体名（一句话它是什么）", "role": "作用（大白话）", "fields": ["字段（含义）"], "lifecycle": "谁创建 → 装了什么 → 谁用 → 最后怎么处理" }
   ],
-  "effects": ["返回值/状态变化/对系统的后果"],
+  "effects": ["对系统/用户的实际影响（大白话）"],
   "mermaid": "sequenceDiagram\\n A->>B: ..."
 }`
 }
@@ -222,27 +236,33 @@ ${sources || '（无）'}
 
 ## 任务
 1. 先从上面的“函数列表”中挑选最合适的入口函数，填入输出 JSON 的 entry 字段（name 必须来自函数列表）。
-2. 围绕该入口，提炼一条 5–10 步的精选主路径，讲清楚“前因 → 调用流转 → 数据结构 → 后果”。
+2. 围绕该入口，提炼一条 5–8 步的主路径，讲清楚“前因 → 调用流转 → 数据结构 → 后果”。
+
+${PLAIN_STYLE}
 
 ## 严格要求
 - 只输出 JSON，不要 markdown 代码围栏，不要解释文字。
 - entry.name 必须来自“函数列表”；entry.file 用该函数所在文件，行号不确定可省略。
-- steps 里若某步来自“静态调用边/函数列表”，confidence 填 "graph"；若你根据内核知识补充但调用关系未被静态图捕获，填 "inferred"。
-- dataFlow 描述关键结构体（如 sk_buff、fib_result、rtable、dst_entry、task_struct 等）的作用、涉及字段、生命周期。
-- mermaid 用 sequenceDiagram 或 flowchart，只画主路径。
+- summary：用一句大白话概括“这个流程到底在干嘛”。
+- trigger：用生活化场景说明“什么情况下会走到这里”，呼应他的问题。
+- steps 控制在 5–8 步，只放最关键的；若某步来自“静态调用边/函数列表”，confidence 填 "graph"；若你根据内核知识补充但调用关系未被静态图捕获，填 "inferred"。
+- dataFlow 最多 3 个最关键的结构体；fields 用“字段（含义）”形式，最多 4 个；用“谁创建 → 装了什么 → 谁用它 → 最后怎么处理”的话说生命周期。
+- effects：说清对系统或用户的实际影响，别只写技术术语。
+- mermaid 用 sequenceDiagram 或 flowchart，只画主路径，节点名可简短。
 - 全部用中文。
 
 ## 输出 JSON 格式
 {
   "entry": { "name": "入口函数名", "file": "路径", "line": 123 },
-  "trigger": "触发条件与前因（什么场景进入这条流程）",
+  "summary": "一句话大白话总结这个流程",
+  "trigger": "什么场景下会走到这里（大白话）",
   "steps": [
-    { "name": "函数名", "file": "路径", "line": 123, "role": "该步一句话职责", "confidence": "graph" }
+    { "name": "函数名", "file": "路径", "line": 123, "role": "一句大白话说明这步做了什么、为了什么", "confidence": "graph" }
   ],
   "dataFlow": [
-    { "struct": "结构体名", "role": "作用", "fields": ["字段1", "字段2"], "lifecycle": "创建→填充→消费→释放" }
+    { "struct": "结构体名（一句话它是什么）", "role": "作用（大白话）", "fields": ["字段（含义）"], "lifecycle": "谁创建 → 装了什么 → 谁用 → 最后怎么处理" }
   ],
-  "effects": ["返回值/状态变化/对系统的后果"],
+  "effects": ["对系统/用户的实际影响（大白话）"],
   "mermaid": "sequenceDiagram\\n A->>B: ..."
 }`
 }

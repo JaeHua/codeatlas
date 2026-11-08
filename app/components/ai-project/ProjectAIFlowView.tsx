@@ -148,6 +148,12 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
               <span className="inline-block border border-[var(--border)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">已缓存</span>
             )}
 
+            {card.summary && (
+              <p className="border-l-2 border-[var(--primary)]/50 bg-[var(--primary)]/5 px-2 py-1.5 text-xs leading-relaxed text-[var(--foreground)]">
+                {card.summary}
+              </p>
+            )}
+
             {card.trigger && (
               <section>
                 <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted-foreground)]">触发条件与前因</h4>
