@@ -1,4 +1,5 @@
 import { useSettings } from '@/app/store/settings'
+import type { FlowCard, FlowEntry } from '@/app/lib/types'
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
@@ -155,6 +156,28 @@ export async function streamProjectAI(
   }
 
   return fullText
+}
+
+export async function generateFlowWalkthrough(
+  projectId: number,
+  entry: FlowEntry,
+  force = false
+): Promise<{ card: FlowCard; cached: boolean }> {
+  const { apiKey, baseUrl, model } = useSettings.getState()
+
+  if (!apiKey) {
+    throw new Error('请先在设置中配置 API Key')
+  }
+
+  const res = await fetch(`/api/projects/${projectId}/ai-flow`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entry, apiKey, baseUrl, model, force }),
+  })
+
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `API error: ${res.status}`)
+  return { card: data.card as FlowCard, cached: Boolean(data.cached) }
 }
 
 export function buildContext(

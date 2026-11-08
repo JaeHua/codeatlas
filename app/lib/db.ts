@@ -100,6 +100,7 @@ export async function deleteProject(id: number) {
   exec(database, 'DELETE FROM symbols WHERE project_id = ?', [id])
   exec(database, 'DELETE FROM files WHERE project_id = ?', [id])
   exec(database, 'DELETE FROM ai_cache WHERE project_id = ?', [id])
+  exec(database, 'DELETE FROM flow_cache WHERE project_id = ?', [id])
   exec(database, 'DELETE FROM projects WHERE id = ?', [id])
 }
 
@@ -128,6 +129,7 @@ function initSchema(database: SqlJsDatabase) {
     `CREATE TABLE IF NOT EXISTS calls (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, caller TEXT NOT NULL, callee TEXT NOT NULL, caller_file TEXT, callee_file TEXT)`,
     `CREATE TABLE IF NOT EXISTS struct_deps (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, struct_name TEXT NOT NULL, uses TEXT NOT NULL, relation TEXT DEFAULT 'pointer')`,
     `CREATE TABLE IF NOT EXISTS ai_cache (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, file_path TEXT NOT NULL, summary TEXT, explanation TEXT, key_functions TEXT, prerequisites TEXT, related_files TEXT, mermaid TEXT, generated_at TEXT)`,
+    `CREATE TABLE IF NOT EXISTS flow_cache (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, entry_key TEXT NOT NULL, data TEXT, generated_at TEXT, UNIQUE(project_id, entry_key))`,
   ]
   for (const sql of stmts) database.run(sql)
 }
@@ -211,5 +213,19 @@ export async function setAICache(projectId: number, filePath: string, data: { su
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [projectId, filePath, data.summary || null, data.explanation || null, data.keyFunctions || null,
      data.prerequisites || null, data.relatedFiles || null, data.mermaid || null]
+  )
+}
+
+// ─── Flow cache queries ───
+
+export async function getFlowCache(projectId: number, entryKey: string) {
+  return queryOne(await getDb(), 'SELECT * FROM flow_cache WHERE project_id = ? AND entry_key = ?', [projectId, entryKey])
+}
+
+export async function setFlowCache(projectId: number, entryKey: string, data: string) {
+  exec(await getDb(),
+    `INSERT OR REPLACE INTO flow_cache (project_id, entry_key, data, generated_at)
+     VALUES (?, ?, ?, ?)`,
+    [projectId, entryKey, data, new Date().toISOString()]
   )
 }

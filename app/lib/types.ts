@@ -85,3 +85,32 @@ export interface StructEdge {
 }
 
 export type EdgeType = 'include' | 'call' | 'struct_dep' | 'concept'
+
+export interface FlowEntry {
+  name: string
+  file: string
+  line?: number
+}
+
+export interface FlowStep {
+  name: string
+  file: string
+  line?: number
+  role: string
+  confidence: 'graph' | 'inferred'
+}
+
+export interface FlowDataStruct {
+  struct: string
+  role: string
+  fields: string[]
+  lifecycle: string
+}
+
+export interface FlowCard {
+  trigger: string
+  steps: FlowStep[]
+  dataFlow: FlowDataStruct[]
+  effects: string[]
+  mermaid?: string
+}
