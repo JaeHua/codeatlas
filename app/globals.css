@@ -296,3 +296,21 @@ body::before {
   0% { background: rgba(224, 169, 60, 0.42); }
   100% { background: rgba(224, 169, 60, 0); }
 }
+
+/* ── Mermaid diagrams: keep rendered graphs inside the panel ── */
+.mermaid-diagram svg {
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 320px !important;
+}
+
+.mermaid-diagram-zoom {
+  background: #ffffff;
+  padding: 12px;
+}
+.mermaid-diagram-zoom svg {
+  max-width: 88vw !important;
+  max-height: 82vh !important;
+  width: auto !important;
+  height: auto !important;
+}
