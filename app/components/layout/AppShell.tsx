@@ -12,6 +12,7 @@ import { SearchBar } from '@/app/components/layout/SearchBar'
 import { TracePanel } from '@/app/components/trace/TracePanel'
 import { KeyboardShortcuts } from '@/app/components/layout/KeyboardShortcuts'
 import { StructGraph } from '@/app/components/graphs/StructGraph'
+import { ProjectAIDrawer } from '@/app/components/ai-project/ProjectAIDrawer'
 import { cn } from '@/lib/utils'
 import { PanelLeft, PanelRight, Code, Share2, Map, Box, X } from 'lucide-react'
 
@@ -259,6 +260,8 @@ export function AppShell({ projectId }: { projectId?: number }) {
         </div>
         <span>按 ? 查看快捷键</span>
       </div>
+
+      {projectId ? <ProjectAIDrawer projectId={projectId} /> : null}
     </div>
   )
 }

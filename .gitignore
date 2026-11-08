@@ -21,4 +21,4 @@ next-env.d.ts
 codeatlas.db*
 
 # user data
-projects/
+/projects/

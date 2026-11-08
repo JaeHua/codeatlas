@@ -100,6 +100,63 @@ export async function chatCompletionStream(
   return fullText
 }
 
+export async function streamProjectAI(
+  projectId: number,
+  messages: ChatMessage[],
+  onChunk: (text: string) => void,
+  signal?: AbortSignal
+): Promise<string> {
+  const { apiKey, baseUrl, model } = useSettings.getState()
+
+  if (!apiKey) {
+    throw new Error('API Key not configured')
+  }
+
+  const res = await fetch(`/api/projects/${projectId}/ai-project`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, apiKey, baseUrl, model }),
+    signal,
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error || `API error: ${res.status}`)
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No response body')
+
+  const decoder = new TextDecoder()
+  let fullText = ''
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const data = line.slice(6).trim()
+      if (data === '[DONE]') continue
+      try {
+        const parsed = JSON.parse(data)
+        const content = parsed.choices?.[0]?.delta?.content
+        if (content) {
+          fullText += content
+          onChunk(content)
+        }
+      } catch {
+        // skip unparseable chunks
+      }
+    }
+  }
+
+  return fullText
+}
+
 export function buildContext(
   filePath: string,
   sourceCode: string,

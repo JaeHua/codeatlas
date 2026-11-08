@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSettings } from '@/app/store/settings'
 import { ThemePicker } from '@/app/components/theme/ThemePicker'
 import { Button } from '@/components/ui/button'
@@ -13,13 +13,22 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Settings, Loader2, CheckCircle, XCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export function SettingsDialog() {
   const { apiKey, baseUrl, model, setApiKey, setBaseUrl, setModel } = useSettings()
   const [open, setOpen] = useState(false)
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [testMsg, setTestMsg] = useState('')
+
+  useEffect(() => {
+    const handler = () => {
+      setOpen(true)
+      setTestStatus('idle')
+      setTestMsg('')
+    }
+    window.addEventListener('codeatlas:open-settings', handler)
+    return () => window.removeEventListener('codeatlas:open-settings', handler)
+  }, [])
 
   const testConnection = async () => {
     if (!apiKey) { setTestMsg('请先填写 API Key'); setTestStatus('error'); return }

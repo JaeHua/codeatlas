@@ -36,6 +36,7 @@ const shortcuts: { group: string; items: Shortcut[] }[] = [
     items: [
       { keys: 'Cmd+E', desc: 'AI 解释选中代码' },
       { keys: 'Cmd+Shift+T', desc: '追踪当前函数的执行流' },
+      { keys: 'Cmd+Shift+A', desc: '打开项目 AI' },
     ],
   },
   {
