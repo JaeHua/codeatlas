@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useStore } from '@/app/store'
 import { useSettings } from '@/app/store/settings'
 import { generateFlowWalkthrough } from '@/app/lib/ai-api'
+import { isImeComposing } from '@/app/lib/keyboard'
 import { MermaidDiagram } from '@/app/components/ai-panel/MermaidDiagram'
 import type { FlowCard, FlowEntry } from '@/app/lib/types'
 import { Loader2, Sparkles, RefreshCw, AlertCircle, ArrowRight, Database, Search } from 'lucide-react'
@@ -90,6 +91,7 @@ export function ProjectAIFlowView({ projectId }: { projectId: number }) {
             value={queryInput}
             onChange={(e) => setQueryInput(e.target.value)}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return
               if (e.key === 'Enter') {
                 e.preventDefault()
                 generateFromInput()

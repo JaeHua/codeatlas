@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Send, Square, Loader2 } from 'lucide-react'
 import { useSettings } from '@/app/store/settings'
 import { streamProjectAI } from '@/app/lib/ai-api'
+import { isImeComposing } from '@/app/lib/keyboard'
 import { ProjectAIMarkdown } from './ProjectAIMarkdown'
 import { cn } from '@/lib/utils'
 
@@ -116,6 +117,7 @@ export function ProjectAIView({ projectId }: { projectId: number }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 send(input)

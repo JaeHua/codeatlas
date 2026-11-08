@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useStore } from '@/app/store'
 import { loadAIMock } from '@/app/lib/data-api'
 import { chatCompletion, chatCompletionStream } from '@/app/lib/ai-api'
+import { isImeComposing } from '@/app/lib/keyboard'
 import { useSettings } from '@/app/store/settings'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -373,7 +374,7 @@ export function AIPanel() {
 
               <div className="flex gap-1.5">
                 <Textarea value={fnFollowUpQuery} onChange={(e) => setFnFollowUpQuery(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFnFollowUp() } }}
+                  onKeyDown={(e) => { if (isImeComposing(e)) return; if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFnFollowUp() } }}
                   placeholder="针对这个函数继续追问... (Shift+Enter 换行)" disabled={fnFollowUpSending}
                   className="min-h-[32px] max-h-[100px] text-xs resize-none bg-[var(--muted)]/50 border-[var(--border)]" rows={1} />
                 <Button size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleFnFollowUp} disabled={fnFollowUpSending || !fnFollowUpQuery.trim()}>
@@ -460,7 +461,7 @@ export function AIPanel() {
             {/* Follow-up input */}
             <div className="flex gap-1.5">
               <Textarea value={followUpQuery} onChange={(e) => setFollowUpQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFollowUp() } }}
+                onKeyDown={(e) => { if (isImeComposing(e)) return; if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleFollowUp() } }}
                 placeholder="继续追问... (Shift+Enter 换行)" disabled={followUpSending}
                 className="min-h-[32px] max-h-[100px] text-xs resize-none bg-[var(--muted)]/50 border-[var(--border)]" rows={1} />
               <Button size="icon" className="h-8 w-8 flex-shrink-0" onClick={handleFollowUp} disabled={followUpSending || !followUpQuery.trim()}>
@@ -718,6 +719,7 @@ export function AIPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
+              if (isImeComposing(e)) return
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 handleSend()
