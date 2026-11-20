@@ -146,12 +146,19 @@ async function main() {
   }
 
   // Phase 2: extract calls and struct deps
+  const defsByFile = new Map<string, typeof functionDefs>()
+  for (const def of functionDefs) {
+    const arr = defsByFile.get(def.file)
+    if (arr) arr.push(def)
+    else defsByFile.set(def.file, [def])
+  }
+
   for (const fp of allFiles) {
     if (!fs.statSync(fp).isFile()) continue
     const rel = path.relative(sourcePath, fp)
     const content = fs.readFileSync(fp, 'utf-8')
 
-    for (const def of functionDefs.filter((d) => d.file === rel)) {
+    for (const def of defsByFile.get(rel) || []) {
       const sigStart = content.indexOf(def.name, def.line > 0 ? (def.line - 1) * 80 : 0)
       if (sigStart < 0) continue
       const braceStart = content.indexOf('{', sigStart)
